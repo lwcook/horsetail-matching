@@ -1,0 +1,2 @@
+# horsetail-matching
+Horsetail matching is an method for optimization under uncertainty. This is a python package that implements the method. 
