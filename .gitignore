@@ -1,0 +1,10 @@
+*.pyc
+
+/dist/
+
+/*.egg-info
+
+*.sh
+
+
+/notebooks/.ipynb*
