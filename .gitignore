@@ -1,10 +1,17 @@
 *.pyc
 
-/dist/
+dist/*
+build/*
 
 /*.egg-info
 
 *.sh
 
+._*
+
+_trystuff.py
+_trystuff.pyc
+_trystuff.py.swp
+horsetailmatching/_hmold.py
 
 /notebooks/.ipynb*

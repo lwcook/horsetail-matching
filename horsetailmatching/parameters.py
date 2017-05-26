@@ -4,33 +4,12 @@ from operator import xor
 import utilities as utils
 from inspect import isfunction
 import warnings
+from scipy.stats import norm
 
 
-class Parameter():
-    '''Class for handling uncertain parameters in optimization under uncertainty
-    problems using horsetail matching'''
-
-    def __init__(self, **kwargs):
-        self.exists = True
-
-
-class IntervalParameter(Parameter):
-    '''Class for handling interval uncertain parameters in optimization
-    under uncertainty problems using horsetail matching.
-
-    :param double lower_bound: lower_bound of the interval [default -1]
-    :param double upper_bound: upper_bound of the interval [default 1]
-    '''
-
-    def __init__(self, lower_bound=-1*float("inf"), upper_bound=float("inf")):
-        self.lb = lower_bound
-        self.ub = upper_bound
-
-
-
-class ProbabilisticParameter(Parameter):
-    '''Class for handling probabilistic uncertain parameters in optimization
-    under uncertainty problems using horsetail matching.
+class UncertainParameter():
+    '''Class for handling uncertain parameters in optimization under
+    uncertainty problems using horsetail matching.
 
     :param str distribution: distribution type of the uncertain parameter.
         Supported distributions are uniform, gaussian, custom (must provide a
@@ -38,27 +17,46 @@ class ProbabilisticParameter(Parameter):
     :param double mean: mean value of the distribution [default 0]
     :param double standard_deviation: standard deviation of the distribution
         [default 1]
-    :param function pdf: pdf function to use with custom distribution
-    :param double lower_bound: lower bound of the distribution (overridden by
+    :param double lower_bound: lower bound of the distribution (overrides by
         mean and standard_devaition inputs) [default -1]
-    :param double upper_bound: upper bound of the distribution (overridden by
+    :param double upper_bound: upper bound of the distribution (overrides by
         mean and standard_devaition inputs) [default 1]
+    :param function pdf: pdf function to use distribution (overrides all other
+        inputs)
     '''
 
-    featured_dists = ['uniform', 'gaussian', 'custom']
+    featured_dists = ['interval', 'uniform', 'gaussian', 'custom']
+    default_mean = 0
+    default_std = 1
+    default_lb = -1
+    default_ub = 1
 
-    def __init__(self, distribution='uniform', mean=0, standard_deviation=1,
-            pdf=None, lower_bound=None, upper_bound=None):
+    def __init__(self, distribution='uniform', mean=default_mean,
+            standard_deviation=default_std, pdf=None,
+            lower_bound=default_lb, upper_bound=default_ub):
+
         self.distribution = distribution.lower()
+
         self.mu, self.std = mean, standard_deviation
         self.lb, self.ub = lower_bound, upper_bound
         self.fpdf = pdf
 
-        if self.distribution == 'uniform' and self.lb is not None:
-            self.mu = 0.5*(self.ub + self.lb)
-            self.std = np.sqrt((self.ub - self.lb)**2/12.)
+        # Private attributes
+        self._samples_found = []
+        self._max_pdf_val = 0
 
         self._check_attributes()
+
+    def getSample(self):
+        '''Returns a random sample of the uncertain variable according to its
+        distribution using rejection sampling.'''
+
+        while True:
+            zscale = self._max_pdf_val*1.1
+            uval = self.lb + np.random.random()*(self.ub-self.lb)
+            zval = zscale*np.random.random()
+            if zval < self.evalPDF(uval):
+                return uval
 
     def evalPDF(self, u_values):
         '''Returns the PDF of the uncertain parameter evaluated at the values
@@ -77,35 +75,52 @@ class ProbabilisticParameter(Parameter):
                 return self._evalPDF(u_values)
 
     def _evalPDF(self, u):
-        if self.distribution == 'uniform':
-            lb = self.mu - np.sqrt(3)*self.std
-            ub = self.mu + np.sqrt(3)*self.std
-            return 1./(ub - lb)
+        if u < self.lb or u > self.ub:
+            return 0
+
+        if self.distribution == 'custom':
+            return self.fpdf(u)
+
+        elif self.distribution == 'uniform':
+            return 1./(self.ub - self.lb)
 
         elif self.distribution == 'gaussian':
-            const = 1./(2*np.pi*self.std**2)
-            return const*np.exp(-(u - self.mu)**2/(2*self.std**2))
+            if self.lb is not None and self.ub is not None:
+                truncconst = norm.cdf((self.ub - self.mu)/self.std) - \
+                    norm.cdf((self.lb - self.mu)/self.std)
+            else:
+                truncconst = 1
+            return (1./truncconst)*norm.pdf((u - self.mu)/self.std)
 
-        elif self.distribution == 'custom':
-            return self.fpdf(u)
+        elif self.distribution == 'interval':
+#            warnings.warn('Interval uncertainties have no PDF, using uniform
+#                    distribution to sample')
+            return 1./(self.ub - self.lb)
 
     def _check_attributes(self):
 
-        if not self.distribution in self.featured_dists:
+        if self.distribution not in self.featured_dists:
             raise ValueError(
                     '''Unsupported distribution type; the following
                     distributions are currently supported: ''' +
                     ', '.join([str(e) for e in self.featured_dists]))
 
-        if xor(self.lb is None, self.ub is None):
-            return ValueError( 'Must give lower and upper bounds together')
+        if self.ub < self.lb:
+            raise ValueError('Upper bound is less than lower bound')
 
-        elif self.distribution == 'gaussian' and self.ub is not None:
-            warnings.warn("Gaussian is unbounded, ignoring bounds")
+        if self.distribution == 'uniform':
+            self.mu = 0.5*(self.lb + self.ub)
+            self.std = 0.5*(self.ub - self.lb) / np.sqrt(3)
 
-        elif self.distribution == 'custom':
-            if self.fpdf is None:
-                raise ValueError('''A pdf function should be provided with
-                    custom distribution''')
-            elif not isfunction(self.fpdf):
-                raise ValueError('''Given pdf should be a function''')
+        elif self.distribution == 'gaussian':
+            self.lb = self.mu - 5*self.std
+            self.ub = self.mu + 5*self.std
+
+        if xor(self.distribution == 'custom', self.fpdf is not None):
+            raise ValueError('''A pdf function is only compatible with
+                custom distribution''')
+
+        for ui in np.linspace(self.lb, self.ub, 20):
+            pdfi = self.evalPDF(ui)
+            if pdfi > self._max_pdf_val:
+                self._max_pdf_val = pdfi

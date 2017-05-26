@@ -49,17 +49,10 @@
 <p>Module</p>
 <span class="target" id="module-horsetailmatching"></span><p>Documentation for Horsetail Matching package</p>
 <dl class="class">
-<dt id="horsetailmatching.Parameter">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">Parameter</tt><big>(</big><em>**kwargs</em><big>)</big><a class="headerlink" href="#horsetailmatching.Parameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class for handling uncertain parameters in optimization under uncertainty
-problems using horsetail matching</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="horsetailmatching.ProbabilisticParameter">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">ProbabilisticParameter</tt><big>(</big><em>distribution='uniform'</em>, <em>mean=0</em>, <em>standard_deviation=1</em>, <em>pdf=None</em>, <em>lower_bound=None</em>, <em>upper_bound=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.ProbabilisticParameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class for handling probabilistic uncertain parameters in optimization
-under uncertainty problems using horsetail matching.</p>
+<dt id="horsetailmatching.UncertainParameter">
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">UncertainParameter</tt><big>(</big><em>distribution='uniform'</em>, <em>mean=None</em>, <em>standard_deviation=None</em>, <em>pdf=None</em>, <em>lower_bound=None</em>, <em>upper_bound=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.UncertainParameter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for handling uncertain parameters in optimization under
+uncertainty problems using horsetail matching.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -71,19 +64,20 @@ function to the pdf argument) [default uniform]</li>
 <li><strong>mean</strong> (<em>double</em>) &#8211; mean value of the distribution [default 0]</li>
 <li><strong>standard_deviation</strong> (<em>double</em>) &#8211; standard deviation of the distribution
 [default 1]</li>
-<li><strong>pdf</strong> (<em>function</em>) &#8211; pdf function to use with custom distribution</li>
-<li><strong>lower_bound</strong> (<em>double</em>) &#8211; lower bound of the distribution (overridden by
+<li><strong>lower_bound</strong> (<em>double</em>) &#8211; lower bound of the distribution (overrides by
 mean and standard_devaition inputs) [default -1]</li>
-<li><strong>upper_bound</strong> (<em>double</em>) &#8211; upper bound of the distribution (overridden by
+<li><strong>upper_bound</strong> (<em>double</em>) &#8211; upper bound of the distribution (overrides by
 mean and standard_devaition inputs) [default 1]</li>
+<li><strong>pdf</strong> (<em>function</em>) &#8211; pdf function to use distribution (overrides all other
+inputs)</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="horsetailmatching.ProbabilisticParameter.evalPDF">
-<tt class="descname">evalPDF</tt><big>(</big><em>u_values</em><big>)</big><a class="headerlink" href="#horsetailmatching.ProbabilisticParameter.evalPDF" title="Permalink to this definition">¶</a></dt>
+<dt id="horsetailmatching.UncertainParameter.evalPDF">
+<tt class="descname">evalPDF</tt><big>(</big><em>u_values</em><big>)</big><a class="headerlink" href="#horsetailmatching.UncertainParameter.evalPDF" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the PDF of the uncertain parameter evaluated at the values
 provided in u_values.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -100,27 +94,8 @@ evaluate the PDF</td>
 </dd></dl>
 
 <dl class="class">
-<dt id="horsetailmatching.IntervalParameter">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">IntervalParameter</tt><big>(</big><em>lower_bound=-inf</em>, <em>upper_bound=inf</em><big>)</big><a class="headerlink" href="#horsetailmatching.IntervalParameter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Class for handling interval uncertain parameters in optimization
-under uncertainty problems using horsetail matching.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>lower_bound</strong> (<em>double</em>) &#8211; lower_bound of the interval [default -1]</li>
-<li><strong>upper_bound</strong> (<em>double</em>) &#8211; upper_bound of the interval [default 1]</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="class">
 <dt id="horsetailmatching.HorsetailMatching">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>uparams</em>, <em>fqoi</em>, <em>ftarg=None</em>, <em>ftarg_u=None</em>, <em>ftarg_l=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>uncertain_parameters</em>, <em>fqoi</em>, <em>ftarg=None</em>, <em>ftarg_u=None</em>, <em>ftarg_l=None</em>, <em>n_samples_prob=100</em>, <em>n_samples_int=100</em>, <em>method='empirical'</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for using horsetail matching within an optimization. The main
 functionality is to create functions that return the horsetail matching
 metric (and optionally its gradient) that can be used with external
@@ -154,7 +129,7 @@ interval uncertainties.</li>
 </table>
 <dl class="method">
 <dt id="horsetailmatching.HorsetailMatching.evalMetric">
-<tt class="descname">evalMetric</tt><big>(</big><em>x</em>, <em>method='empirical'</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.evalMetric" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">evalMetric</tt><big>(</big><em>x</em>, <em>method=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.evalMetric" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluates the horsetail matching metric using the empirical CDF.</p>
 <p>:param str</p>
 </dd></dl>

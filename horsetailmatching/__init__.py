@@ -1,6 +1,6 @@
 '''Documentation for Horsetail Matching package'''
 from hm import HorsetailMatching
-from parameters import Parameter, IntervalParameter, ProbabilisticParameter
+from parameters import UncertainParameter
 from demoproblems import TP1
 
 def joke():

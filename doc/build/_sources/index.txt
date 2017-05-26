@@ -9,7 +9,7 @@ Welcome to horsetailmatching's documentation!
 Module
 
 .. automodule:: horsetailmatching
-    :members: Parameter, ProbabilisticParameter, IntervalParameter, HorsetailMatching
+    :members: UncertainParameter, HorsetailMatching
 
 
 Contents:
