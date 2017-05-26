@@ -42,7 +42,7 @@ class UncertainParameter():
         self.fpdf = pdf
 
         # Private attributes
-        self._samples_found = []
+        self._returned_limits = []
         self._max_pdf_val = 0
 
         self._check_attributes()
@@ -50,6 +50,14 @@ class UncertainParameter():
     def getSample(self):
         '''Returns a random sample of the uncertain variable according to its
         distribution using rejection sampling.'''
+
+        if self.distribution == 'interval':
+            if len(self._returned_limits) < 1:
+                self._returned_limits.append(self.lb)
+                return self.lb
+            elif len(self._returned_limits) < 2:
+                self._returned_limits.append(self.ub)
+                return self.ub
 
         while True:
             zscale = self._max_pdf_val*1.1
