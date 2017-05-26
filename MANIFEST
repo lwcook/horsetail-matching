@@ -3,4 +3,9 @@ README
 setup.cfg
 setup.py
 horsetailmatching/__init__.py
-horsetailmatching/matcher.py
+horsetailmatching/_hmold.py
+horsetailmatching/demoproblems.py
+horsetailmatching/hm.py
+horsetailmatching/parameters.py
+horsetailmatching/utilities.py
+horsetailmatching/utilitiesold.py
