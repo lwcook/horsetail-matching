@@ -246,7 +246,7 @@ class HorsetailMatching():
                 Du_grad[ix] = _matrix_grad(qis, hu, hu_grad[:, ix], tu, tu_pr)
                 Dl_grad[ix] = _matrix_grad(qis, hl, hl_grad[:, ix], tl, tl_pr)
 
-            dhat_grad = (0.5*(Du+Dl)**(-0.5)*(Du_grad + Dl_grad)).tolist()
+            dhat_grad = (0.5*(Du+Dl)**(-0.5)*(Du_grad + Dl_grad))
 
             return dhat, dhat_grad
 
