@@ -9,9 +9,12 @@ build/
 
 ._*
 
+*.swp
+
 _trystuff.py
 _trystuff.pyc
 _trystuff.py.swp
 horsetailmatching/_hmold.py
+horsetailmatching/_nipcold.py
 
 /notebooks/.ipynb*

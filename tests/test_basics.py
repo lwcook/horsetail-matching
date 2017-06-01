@@ -2,9 +2,13 @@ import os
 import sys
 import unittest
 import pdb
+
 import numpy as np
+import matplotlib.pyplot as plt
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
 '../horsetailmatching/')))
+
 
 from hm import HorsetailMatching
 from parameters import UncertainParameter
@@ -39,47 +43,63 @@ class TestInitializations(unittest.TestCase):
         with self.assertRaises(ValueError):
             param = UncertainParameter(distribution='custom')
 
-        with self.assertRaises(ValueError):
-            param = UncertainParameter(distribution='custom')
-
         param = UncertainParameter('interval', lower_bound=-2, upper_bound=2)
-
+        self.assertAlmostEqual(param.lb, -2)
+        self.assertAlmostEqual(param.ub, 2)
 
     def testHM(self):
 
-        uparams = [UncertainParameter('uniform')]
 
-        fqoi = lambda x, u: x + u
+        fqoi = lambda x, u: np.linalg.norm(x) + np.linalg.norm(u)
         ftarget = lambda h: 0
 
-        theHM = HorsetailMatching(fqoi, uparams, ftarget)
+        uparams = [UncertainParameter('uniform')]
+        theHM = HorsetailMatching(fqoi, uparams, ftarg=ftarget)
+        theHM.evalMetric([0,0], method='empirical')
 
-        ans = theHM.evalMetricEmpirical([0,0])
+        uparams = UncertainParameter('uniform')
+        theHM = HorsetailMatching(fqoi, uparams, ftarg=ftarget)
+        theHM.evalMetric([0,0], method='empirical')
 
-class TestDemoProblems(unittest.TestCase):
-
-    def testTP1(self):
-
-        ans = TP1([0,0], [0,0])
+        uparams = [UncertainParameter('uniform'),
+                UncertainParameter('interval')]
+        theHM = HorsetailMatching(fqoi, uparams, ftarg=ftarget)
+        theHM.evalMetric([0,0], method='kernel')
 
 
 class TestHorsetailMatching(unittest.TestCase):
 
-    ftarget = lambda h: 0
 
-    def testProbMetric1D(self):
+    def testMetricValues(self):
+
+        ftarget = lambda h: 0
+        fqoi = lambda x, u: 1
 
         uparams = [UncertainParameter('uniform')]
-        theHM = HorsetailMatching(TP1, uparams)
-        theHM.evalMetric([1, 1])
+        theHM = HorsetailMatching(fqoi, uparams, ftarg=ftarget,
+                q_integration_points=np.linspace(0.99, 1.01, 100), bw=0.0001)
+        ans = theHM.evalMetric([0])
+        self.assertAlmostEqual(ans, np.sqrt(2), places=5)
 
-    def testProbMetric2D(self):
+        ans = theHM.evalMetric([0], method='kernel')
+        self.assertAlmostEqual(ans, np.sqrt(2), places=5)
 
-        uparams = [UncertainParameter('uniform'),
-                   UncertainParameter('gaussian')]
-        theHM = HorsetailMatching(TP1, uparams)
-        theHM.evalMetric([1, 1])
+        ftarget = lambda h: -h
+        fqoi = lambda x, u: np.linalg.norm(u)
 
+        up = [UncertainParameter('uniform'), UncertainParameter('interval')]
+        theHM = HorsetailMatching(fqoi, up, ftarg_u=ftarget, ftarg_l=ftarget,
+                n_samples_prob=100, n_samples_int=50)
+        ans = theHM.evalMetric([0])
+        self.assertTrue(abs(ans - 2.05) < 5e-2)
+
+        ftarget = lambda h: -h
+        fqoi = lambda x, u: u
+        up = UncertainParameter('uniform')
+        theHM = HorsetailMatching(fqoi, up, ftarg=ftarget,
+                n_samples_prob=1000)
+        ans = theHM.evalMetric([0])
+        self.assertTrue(abs(ans - 1.4) < 1e-1)
 
 
 if __name__ == "__main__":
