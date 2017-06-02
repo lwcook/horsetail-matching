@@ -1,5 +1,5 @@
 import numpy as np
-from copy import copy
+import copy
 
 def makeIter(x):
     if isinstance(x, basestring):
@@ -21,18 +21,24 @@ def choose(n, k):
     else:
         return 0
 
-def finDiff(fobj, dv, f0=None, dvi=None, eps=10**-6):
-    return finiteDifference(fobj, dv, f0=None, dvi=None, eps=10**-6)
+def finDiff(fobj, dv, f0=None, eps=10**-6):
+    return finiteDifference(fobj, dv, f0=None, eps=10**-6)
 
-def finiteDifference(fobj, dv, f0=None, dvi=None, eps=10**-6):
+def finiteDifference(fobj, dv, f0=None, eps=10**-6):
+
+    if f0 is None:
+        f0 = fobj(dv)
 
     try:
         iter(dv)
     except:
         dv = [dv]
 
-    if f0 is None: f0 = fobj(dv)
-    if dvi is None:
+    if len(dv) == 1:
+        fbase = copy.copy(f0)
+        fnew = fobj(dv[0] + eps)
+        return float((fnew - fbase)/eps)
+    else:
         grad = []
         for ii in range(len(dv)):
             fbase = copy(f0)
@@ -40,11 +46,4 @@ def finiteDifference(fobj, dv, f0=None, dvi=None, eps=10**-6):
             x[ii] += eps
             fnew = fobj(x)
             grad.append(float((fnew - fbase)/eps))
-        if len(grad) == 1:
-            return float(grad[0])
-        else:
             return grad
-    else:
-        x = copy.copy(dv)
-        x[dvi] += eps
-        return (fobj(x) - f0) / eps

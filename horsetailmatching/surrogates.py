@@ -1,12 +1,12 @@
 import numpy as np
+import math
 import pdb
 
-def polySurrogate(x_sp, f_sp, dims=None):
+import utilities as utils
+
+def simpleSurrogate(x_sp, f_sp, dims=1):
     """ Creates a simpler polynomial surrogate to
     model a function over the range [-1,1]**dims """
-
-    if dims is None:
-        dims = x_sp.shape[1]
 
     if dims == 1:
         X, F = x_sp.flatten(), f_sp.flatten()
@@ -73,7 +73,53 @@ def polySurrogate(x_sp, f_sp, dims=None):
 
         return poly_model
 
-class NIPC(object):
+    elif dims == 4:
+
+        X = x_sp[:, 0].flatten()
+        Y = x_sp[:, 1].flatten()
+        Z = x_sp[:, 2].flatten()
+        W = x_sp[:, 3].flatten()
+        F = f_sp.flatten()
+
+        A = np.array(
+            [X*0+1.,
+             X, Y, Z, W,
+             X**2, Y**2, Z**2, W**2,
+             X*Y, X*Z, Y*Z, X*W, Y*W, Z*W,
+             X**3, Y**3, Z**3, W**3,
+             X*Y*Z, X*Y*W, X*Z*W, Y*W*Z,
+             X**2*Y, X**2*Z, X**2*W,
+             Y**2*X, Y**2*Z, Y**2*W,
+             Z**2*X, Z**2*Y, Z**2*W,
+             W**2*X, W**2*Y, W**2*Z]).T
+
+        c, r, rank, s = np.linalg.lstsq(A, F)
+
+        def poly_model(u):
+            x = u[0]
+            y = u[1]
+            z = u[2]
+            w = u[3]
+            return c[0] + \
+                c[1]*x + c[2]*y + c[3]*z + c[4]*w + \
+                c[5]*x**2 + c[6]*y**2 + c[7]*z**2 + c[8]*w**2 + \
+                c[9]*x*y + c[10]*x*z + c[11]*y*z + \
+                c[12]*x*w + c[13]*y*w + c[14]*z*w + \
+                c[15]*x**3 + c[16]*y**3 + c[17]*z**3 + c[18]*w**3 + \
+                c[19]*x**2*y + c[20]*x**2*z + c[21]*x**2*w + \
+                c[22]*y**2*x + c[23]*y**2*z + c[24]*y**2*w + \
+                c[25]*z**2*x + c[26]*z**2*y + c[27]*z**2*w + \
+                c[28]*w**2*x + c[29]*w**2*y + c[30]*w**2*z
+
+
+        return poly_model
+
+    else:
+        print('Error, cannot handle more than 4D')
+        return 0
+
+
+class PolySurrogate(object):
 
     def __init__(self, dimensions=[], order=3, poly_type='legendre'):
 

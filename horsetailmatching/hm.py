@@ -19,21 +19,23 @@ class HorsetailMatching():
     :param function fqoi: function that returns the quantity of interest, it
         must take two ordered arguments - the value of the design variable
         vector and the value of the uncertainty vector.
-    :param list uncertain_parameters_params: list of Parameter objects that
-        describe the uncertain inputs for the problem.
-    :param str method: method with which to evaluate the horsetil matching
-        metric, can be 'empirical' or 'kernel' [default empirical].
+    :param list uncertain_parameters: list of Parameter objects that
+        describe the uncertain inputs for the problem. They must have the
+        getSample() method.
     :param bool/function jacobian: Only for method = 'kernel'. Argument that
         specifies how to evaluate the gradient of the quantity of interest.
         If False no gradients are used, if True the fqoi should return a
         second argument g such that g_i = dq/dx_i. If a function, it should
         have the same signature as fqoi but return g. [default False]
-    :param function ftarg: function that returns the value of the target
+    :param str method: method with which to evaluate the horsetil matching
+        metric, can be 'empirical' or 'kernel' [default 'empirical' if
+        jac is False else default 'kernel'].
+    :param function ftarget: function that returns the value of the target
         inverse CDF given a value in [0,1]. [default t(h) = 0]
-    :param function ftarg_u: under mixed uncertainties, function that returns
+    :param function ftarget_u: under mixed uncertainties, function that returns
         the value of the target for the upper bound horsetail curve given a
         value in [0,1]. [default t_u(h) = 0]
-    :param function ftarg_l: under mixed uncertainties, function that returns
+    :param function ftarget_l: under mixed uncertainties, function that returns
         the value of the target for the lower bound horsetail curve given a
         value in [0,1]. [default t_u(h) = 0]
     :param int n_samples_prob: number of samples to take from the
@@ -42,26 +44,42 @@ class HorsetailMatching():
         interval uncertainties. [default 10]
     :param list q_integration_points: Only for method='kernel'.
         The integration points to use when evaluating the metric using
-        kernels [by defaulted 100 points spread over 3 times the range of
+        kernels [by default 100 points spread over 3 times the range of
         the samples of q obtained the first time the metric is evaluated]
     :param number bw: Only for method='kernel'. The bandwidth used in the
         kernel function [by default is found the first time the metric is
         evaluated using Scott's rule]
     :param function surrogate: Surrogate that is created at every design
-        point to be sampled instead of fqoi. [default None]
+        point to be sampled instead of fqoi. It should be a function that
+        takes two arguments - an array with values of the uncertainties at
+        which to fit the surrogate of size (num_quadrature_points,
+        num_uncertainties), and an array of quantity of interest values
+        corresponding to these uncertainty values to which to fit the surrogate
+        of size (num_quadrature_points) [default None]
     :param list u_quadrature_points: Only with a surrogate. List of points at
-        which fqoi is evaluated to give values to fit the surrogates to. [by
-        default tensor quadrature of 5 points in each uncertain dimension is
-        used]
+        which fqoi is evaluated to give values to fit the surrogates to. These
+        are passed to the surrogate function along with the qoi evaluated at
+        these points when the surrogate is fitted [by default tensor
+        quadrature of 5 points in each uncertain dimension is used]
+    :param bool/function surrogate_jac: Specifies how to take surrogates of
+        the gradient. It works similarly to the jac argument: if False, the
+        same surrgate is fitted to fqoi and each component of its gradient, if
+        True, the surrogate function is expected to take a third argument - an
+        array that is the gradient at each of the quadrature points of size
+        (num_quadrature_points, num_design_variables). If a function, then
+        instead the array of uncertainty values and the array of gradient
+        values are passed to this function and it should return a function for
+        the surrogate model of the gradient.
     '''
 
-    def __init__(self, fqoi, uncertain_parameters,
-            method='empirical', jacobian=None,
-            ftarg=None, ftarg_u=None, ftarg_l=None,
-            n_samples_prob=100, n_samples_int=10,
+    def __init__(self, fqoi, uncertain_parameters, jac=None,
+            method=None, verbose=False,
+            ftarget=None, ftarget_u=None, ftarget_l=None,
+            n_samples_prob=1000, n_samples_int=20,
             q_integration_points=None,
-            bw=None, alpha=100,
-            surrogate=None, u_quadrature_points=None):
+            bw=None, alpha=500,
+            surrogate=None, u_quadrature_points=None,
+            surrogate_jac=None):
 
         self.fqoi = fqoi
 
@@ -76,25 +94,28 @@ class HorsetailMatching():
                 self.u_prob.append((ii, u))
 
         self.method = method
-        if jacobian is None:
+        if jac is None:
             self.jac = False
+            if method is None:
+                self.method = 'empirical'
         else:
-            self.jac = jacobian
+            self.jac = jac
+            if method is None:
+                self.method = 'kernel'
 
-        # Target function can be provided as a single CDF for probabilistic
         # uncertainties, or as upper and lower targets for mixed uncertainties
-        if ftarg is None:
+        if ftarget is None:
             def standardTarget(h): return 0
             self.ftarg = standardTarget
         else:
-            self.ftarg = ftarg
+            self.ftarg = ftarget
 
-        if ftarg_u is None and ftarg_l is None:
+        if ftarget_u is None or ftarget_l is None:
             self.ftarg_u = self.ftarg
             self.ftarg_l = self.ftarg
         else:
-            self.ftarg_u = ftarg_u
-            self.ftarg_l = ftarg_l
+            self.ftarg_u = ftarget_u
+            self.ftarg_l = ftarget_l
 
         self.M_prob = n_samples_prob
         self.M_int = n_samples_int
@@ -109,9 +130,16 @@ class HorsetailMatching():
 
         self.surrogate = surrogate
         self.u_quadrature_points = u_quadrature_points
+        if surrogate_jac is None:
+            self.surrogate_jac = False
+        else:
+            self.surrogate_jac = surrogate_jac
 
         ## Makes the dimensions to be sampled matches the types of uncertainty
         self._processDimensions()
+
+        self.verbose = verbose
+
 
     def evalMetric(self, x, method=None):
         '''Evaluates the horsetail matching metric at given values of the
@@ -120,6 +148,10 @@ class HorsetailMatching():
         :param iterable x: values of the design variables
         :param str method: method to use to evaluate the metric
         '''
+        if self.verbose:
+            print('----------')
+            print('At design: ' + str(x))
+
         # Make sure everything is in order
         u_sample_dimensions = self._processDimensions()
 
@@ -128,16 +160,24 @@ class HorsetailMatching():
         if method is None:
             method = self.method
 
+        if self.verbose:
+            print('Evaluating surrogate')
         if self.surrogate is None:
             def fqoi(u): return self.fqoi(x, u)
             def fgrad(u): return self.jac(x, u)
+            jac = self.jac
         else:
-            fqoi, fgrad = self._makeSurrogates(x)
+            fqoi, fgrad, surr_jac = self._makeSurrogates(x)
+            jac = surr_jac
 
         u_samples = self._getParameterSamples(u_sample_dimensions)
 
-        q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad)
+        if self.verbose:
+            print('Evaluating quantity of interest at samples')
+        q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad, jac)
 
+        if self.verbose:
+            print('Evaluating metric')
         if method.lower() == 'empirical':
             if self.jac:
                 raise TypeError(
@@ -161,15 +201,16 @@ class HorsetailMatching():
         ql, qu, hl, hu = self._ql, self._qu, self._hl, self._hu
         qh, hh = self._qh, self._hh
 
-        ql, hl = _appendPlotArrays(ql, hl)
-        qu, hu = _appendPlotArrays(qu, hu)
+        if self.q_integration_points is not None:
+            ql, hl = _appendPlotArrays(ql, hl, self.q_integration_points)
+            qu, hu = _appendPlotArrays(qu, hu, self.q_integration_points)
 
         for qi, hi in zip(qh, hh):
             plt.plot(qi, hi, c='grey', alpha=0.5, lw=0.5)
         plt.plot(ql, hl, *plotargs, **plotkwargs)
-        plt.plot([self.ftarg_l(hi) for hi in hl], hl, 'b:')
+        plt.plot([self.ftarg_l(hi) for hi in hl], hl, 'k:')
         plt.plot(qu, hu, *plotargs, **plotkwargs)
-        plt.plot([self.ftarg_u(hi) for hi in hu], hu, 'r:')
+        plt.plot([self.ftarg_u(hi) for hi in hu], hu, 'k:')
         plt.ylim([0,1])
         plt.xlabel('q - Quantity of Interest')
         plt.ylabel('h - CDF')
@@ -274,6 +315,8 @@ class HorsetailMatching():
         self._ql, self._qu, self._hl, self._hu = qis, qis, hl, hu
         self._qh, self._hh = qhtail, fhtail
         self._Dl, self._Du = Dl, Du
+        if self.verbose:
+            print('Metric: ' + str(dhat))
 
         if grad_samples is not None:
             tu_pr = np.array([utils.finDiff(self.ftarg_u, hi) for hi in hu])
@@ -283,6 +326,8 @@ class HorsetailMatching():
                 Dl_grad[ix] = _matrix_grad(qis, hl, hl_grad[:, ix], tl, tl_pr)
 
             dhat_grad = (0.5*(Du+Dl)**(-0.5)*(Du_grad + Dl_grad))
+            if self.verbose:
+                print('Gradient: ' + str([g for g in dhat_grad]))
 
             return dhat, dhat_grad
 
@@ -312,6 +357,7 @@ class HorsetailMatching():
 
             def fqoi(u): return surr_qoi(u)
             fgrad = False
+            surr_jac = False
 
         else:
             g_sparse = np.zeros([N_sparse, self.N_dv])
@@ -324,22 +370,34 @@ class HorsetailMatching():
                     q_sparse[iu] = self.fqoi(x, u)
                     g_sparse[iu, :] = self.jac(x, u)
 
-            surr_qoi = self.surrogate(u_sparse, q_sparse)
-            for k in np.arange(self.N_dv):
-                fpartial[k] = self.surrogate(u_sparse, g_sparse[:, k])
-
-            def surr_grad(u): return [f(u) for f in fpartial]
+            if not self.surrogate_jac:
+                surr_qoi = self.surrogate(u_sparse, q_sparse)
+                for k in np.arange(self.N_dv):
+                    fpartial[k] = self.surrogate(u_sparse, g_sparse[:, k])
+                def surr_grad(u): return [f(u) for f in fpartial]
+            else:
+                if isinstance(self.surrogate_jac, bool) and self.surrogate_jac:
+                    surr_qoi, surr_grad = self.surrogate(
+                                u_sparse, q_sparse, g_sparse)
+                else:
+                    surr_qoi  = self.surrogate(u_sparse, q_sparse)
+                    surr_grad = self.surrogate_jac(u_sparse, g_sparse)
 
             def fqoi(u): return(surr_qoi(u))
             def fgrad(u): return(surr_grad(u))
+            surr_jac = fgrad
 
-        return fqoi, fgrad
+        return fqoi, fgrad, surr_jac
 
     def _getParameterSamples(self, u_sample_dimensions):
 
         if self.bSAA and self.stored_u_samples is not None:
+            if self.verbose:
+                print('Re-using stored samples')
             return self.stored_u_samples
         else:
+            if self.verbose:
+                print('Getting uncertain parameter samples')
             N_u = len(self.u_int) + len(self.u_prob)
 
             u_samples = np.zeros(u_sample_dimensions)
@@ -366,12 +424,12 @@ class HorsetailMatching():
                 vu[i] = (u.getSample())
         return vu
 
-    def _evalSamples(self, u_samples, fqoi, fgrad):
+    def _evalSamples(self, u_samples, fqoi, fgrad, jac):
 
         # Array of shape (M_int, M_prob)
         grad_samples = None
         q_samples = np.zeros([self.M_int, self.M_prob])
-        if not self.jac:
+        if not jac:
             for ii in np.arange(q_samples.shape[0]):
                 for jj in np.arange(q_samples.shape[1]):
                     q_samples[ii, jj] = fqoi(u_samples[ii, jj])
@@ -379,7 +437,7 @@ class HorsetailMatching():
             grad_samples = np.zeros([self.M_int, self.M_prob, self.N_dv])
             for ii in np.arange(q_samples.shape[0]):
                 for jj in np.arange(q_samples.shape[1]):
-                    if isinstance(self.jac, bool) and self.jac:
+                    if isinstance(jac, bool) and jac:
                         (q, grad) = fqoi(u_samples[ii, jj])
                         q_samples[ii, jj] = float(q)
                         grad_samples[ii, jj, :] = [_ for _ in grad]
@@ -515,25 +573,25 @@ def _matrix_grad(q, h, h_dx, t, t_prime):
 
     return grad
 
-def _appendPlotArrays(self, q, h):
+def _appendPlotArrays(q, h, q_integration_points):
     q = np.insert(q, 0, q[0])
     h = np.insert(h, 0, 0)
-    q = np.insert(q, 0, self.q_low)
+    q = np.insert(q, 0, min(q_integration_points))
     h = np.insert(h, 0, 0)
     q = np.append(q, q[-1])
     h = np.append(h, 1)
-    q = np.append(q, self.q_high)
+    q = np.append(q, max(q_integration_points))
     h = np.append(h, 1)
     return q, h
 
-def _appendPlotArrays(self, q, h):
+def _appendPlotArrays(q, h, q_integration_points):
     q = np.insert(q, 0, q[0])
     h = np.insert(h, 0, 0)
-    q = np.insert(q, 0, self.q_low)
+    q = np.insert(q, 0, min(q_integration_points))
     h = np.insert(h, 0, 0)
     q = np.append(q, q[-1])
     h = np.append(h, 1)
-    q = np.append(q, self.q_high)
+    q = np.append(q, max(q_integration_points))
     h = np.append(h, 1)
     return q, h
 
