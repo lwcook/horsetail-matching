@@ -4,124 +4,28 @@ import pdb
 
 import utilities as utils
 
-def simpleSurrogate(x_sp, f_sp, dims=1):
-    """ Creates a simpler polynomial surrogate to
-    model a function over the range [-1,1]**dims """
-
-    if dims == 1:
-        X, F = x_sp.flatten(), f_sp.flatten()
-
-        A = np.array([X * 0. + 1., X, X**2, X**3, X**4, X**5]).T
-        c, r, rank, s = np.linalg.lstsq(A, F)
-
-        def poly_model(u):
-            return c[0] + c[1]*u + c[2]*u**2 + c[3]*u**3 +\
-                c[4]*u**4 + c[5]*u**5
-
-        return poly_model
-
-    elif dims == 2:
-
-        X, Y = x_sp[:, 0].flatten(), x_sp[:, 1].flatten()
-        F = f_sp.flatten()
-
-        A = np.array(
-            [X*0+1., X, Y, X**2, X*Y, Y**2, X**3, X**2*Y, X*Y**2, Y**3]).T
-        c, r, rank, s = np.linalg.lstsq(A, F)
-
-        def poly_model(u):
-            x = u[0]
-            y = u[1]
-            return c[0] + c[1]*x + c[2]*y + \
-                c[3]*x**2 + c[4]*x*y + c[5]*y**2 + \
-                c[6]*x**3 + c[7]*x**2*y + c[8]*x*y**2 + c[9]*y**3
-
-        return poly_model
-
-    elif dims == 3:
-
-        X = x_sp[:, 0].flatten()
-        Y = x_sp[:, 1].flatten()
-        Z = x_sp[:, 2].flatten()
-        F = f_sp.flatten()
-
-        A = np.array(
-            [X*0+1.,
-             X, Y, Z,
-             X**2, Y**2, Z**2,
-             X*Y, X*Z, Y*Z,
-             X**3, Y**3, Z**3,
-             X**2*Y, X**2*Z, Y**2*X,
-             Y**2*Z, Z**2*X, Z**2*Y,
-             X*Y*Z
-            ]).T
-
-        c, r, rank, s = np.linalg.lstsq(A, F)
-
-        def poly_model(u):
-            x = u[0]
-            y = u[1]
-            z = u[2]
-            return c[0] + \
-                c[1]*x + c[2]*y + c[3]*z + \
-                c[4]*x**2 + c[5]*y**2 + c[6]*z**2 + \
-                c[7]*x*y + c[8]*x*z + c[9]*y*z + \
-                c[10]*x**3 + c[11]*y**3 + c[12]*y**3 + \
-                c[13]*x**2*y + c[14]*x**2*z + c[15]*y**2*z + \
-                c[16]*y**2*x + c[17]*z**2*x + c[18]*z**2*y + \
-                c[19]*x*y*z
-
-        return poly_model
-
-    elif dims == 4:
-
-        X = x_sp[:, 0].flatten()
-        Y = x_sp[:, 1].flatten()
-        Z = x_sp[:, 2].flatten()
-        W = x_sp[:, 3].flatten()
-        F = f_sp.flatten()
-
-        A = np.array(
-            [X*0+1.,
-             X, Y, Z, W,
-             X**2, Y**2, Z**2, W**2,
-             X*Y, X*Z, Y*Z, X*W, Y*W, Z*W,
-             X**3, Y**3, Z**3, W**3,
-             X*Y*Z, X*Y*W, X*Z*W, Y*W*Z,
-             X**2*Y, X**2*Z, X**2*W,
-             Y**2*X, Y**2*Z, Y**2*W,
-             Z**2*X, Z**2*Y, Z**2*W,
-             W**2*X, W**2*Y, W**2*Z]).T
-
-        c, r, rank, s = np.linalg.lstsq(A, F)
-
-        def poly_model(u):
-            x = u[0]
-            y = u[1]
-            z = u[2]
-            w = u[3]
-            return c[0] + \
-                c[1]*x + c[2]*y + c[3]*z + c[4]*w + \
-                c[5]*x**2 + c[6]*y**2 + c[7]*z**2 + c[8]*w**2 + \
-                c[9]*x*y + c[10]*x*z + c[11]*y*z + \
-                c[12]*x*w + c[13]*y*w + c[14]*z*w + \
-                c[15]*x**3 + c[16]*y**3 + c[17]*z**3 + c[18]*w**3 + \
-                c[19]*x**2*y + c[20]*x**2*z + c[21]*x**2*w + \
-                c[22]*y**2*x + c[23]*y**2*z + c[24]*y**2*w + \
-                c[25]*z**2*x + c[26]*z**2*y + c[27]*z**2*w + \
-                c[28]*w**2*x + c[29]*w**2*y + c[30]*w**2*z
-
-
-        return poly_model
-
-    else:
-        print('Error, cannot handle more than 4D')
-        return 0
-
-
 class PolySurrogate(object):
+    '''Class for creating surrogate models using non-intrusive polynomial
+    chaos.
 
-    def __init__(self, dimensions=[], order=3, poly_type='legendre'):
+    :param int dimensions: number of dimensions of the polynomial expansion
+
+    :param int order: order of the polynomial expansion [default 3]
+
+    :param str/list poly_type: string of the type of polynomials to use in the
+        expansion, or list of strings where each entry in the list is the type
+        of polynomial to use in the corresponding dimension. Supported
+        polynomial types are legendre and gaussian. [default legendre]
+
+    *Example Declaration*::
+
+        >>> thePC = PolySurrogate(dimensions=3)
+        >>> thePC = PolySurrogate(dimensions=3, order=3)
+        >>> thePC = PolySurrogate(dimensions=3, order=3, poly_type='legendre')
+
+    '''
+
+    def __init__(self, dimensions, order=3, poly_type='legendre'):
 
         self.dims = dimensions
         self.P = int(order) + 1
@@ -138,14 +42,28 @@ class PolySurrogate(object):
         self.coeffs = np.zeros([self.P for __ in np.arange(self.dims)])
 
     def surrogate(u_sparse, q_sparse):
-        '''Returns a surrogate model function fitted to the input/output
-        combinations given in u_sparse and q_sparse.
+        '''Combines the train and predict methods to create a surrogate
+        model function fitted to the input/output combinations given in
+        u_sparse and q_sparse.
 
-            u_sparse: input values at which the output values are obtained.
-                Must be the same as the qaudrature points defined by the
-                getQuadraturePoints method.
-            q_sparse: output values corresponding to the input values given in
-                u_sparse to which the surrogate is fitted
+        :param numpy.ndarray u_sparse: input values at which the output
+            values are obtained.  Must be the same as the qaudrature
+            points defined by the getQuadraturePoints method.
+        :param numpy.ndarray q_sparse: output values corresponding
+            to the input values given in u_sparse to which the
+            surrogate is fitted
+
+        :return: surrogate model fitted to u_sparse and q_sparse
+
+        :rtype: function
+
+        *Sample Usage*::
+
+            >>> thePC = PolySurrogate(dimensions=2)
+            >>> U = thePC.getQuadraturePoints()
+            >>> Q = [myFunc(u) for u in U]
+            >>> surrogateFunc = thePC.surrogate(U, Q)
+
         '''
         self.train(q_sparse)
         def model(u):
@@ -156,7 +74,20 @@ class PolySurrogate(object):
         '''Predicts the output value at u from the fitted polynomial expansion.
         Therefore the method train() must be called first.
 
-            u: input value at which to predict the output.
+        :param numpy.ndarray u: input value at which to predict the output.
+
+        :return: q_approx - the predicted value of the output at u
+
+        :rtype: float
+
+        *Sample Usage*::
+
+            >>> thePC = PolySurrogate(dimensions=2)
+            >>> U = thePC.getQuadraturePoints()
+            >>> Q = [myFunc(u) for u in U]
+            >>> thePC.train(U, Q)
+            >>> thePC.predict([0, 1])
+
         '''
         y, ysub = 0, np.zeros(self.N_poly)
         for ip in range(self.N_poly):
@@ -170,9 +101,18 @@ class PolySurrogate(object):
     def train(self, fpoints):
         '''Trains the polynomial expansion.
 
-            fpoints: output values corresponding to the quadrature points given
-            by the getQuadraturePoints method to which the expansion should be
-            trained.
+        :param numpy.ndarray fpoints: output values corresponding to the
+            quadrature points given by the getQuadraturePoints method to
+            which the expansion should be trained.
+
+        *Sample Usage*::
+
+            >>> thePC = PolySurrogate(dimensions=2)
+            >>> U = thePC.getQuadraturePoints()
+            >>> Q = [myFunc(u) for u in U]
+            >>> thePC.train(U, Q)
+            >>> predicted_q = thePC.predict([0, 1])
+
         '''
         self.coeffs = 0*self.coeffs
 
@@ -193,10 +133,13 @@ class PolySurrogate(object):
         integration of inner products from the definition of the polynomials in
         each dimension.
 
-        returns:
-            upoints: array of size (num_polynomials, num_dimensions)
-            wpoints: array of size (num_polynomials)
-            '''
+
+        :return: (u_points, w_points) - np.ndarray of shape
+            (num_polynomials, num_dimensions) and a np.ndarray of size
+            (num_polynomials)
+
+        :rtype: (np.ndarray, np.ndarray)
+        '''
 
         qw_list, qp_list = [], []
         for ii in np.arange(len(self.J_list)):
@@ -220,8 +163,9 @@ class PolySurrogate(object):
         '''Gets the quadrature points at which the output values must be found
         in order to train the polynomial expansion using gaussian quadrature.
 
-        returns:
-            upoints: array of size (num_polynomials, num_dimensions)
+        :return: upoints - a np.ndarray of size (num_polynomials, num_dimensions)
+
+        :rtype: np.ndarray
         '''
         upoints, _ = self.getQuadraturePointsAndWeights()
         return upoints
@@ -230,15 +174,24 @@ class PolySurrogate(object):
 ## Private funtions for polynomials
 ## --------------------------------------------------------------------------
 
-def eval_poly(us, ns, Js):
+def eval_poly(uvec, nvec, Jvec):
     '''Evaluate multi-dimensional polynomials through tensor multiplication.
-        us: vector value at which to evaluate the polynomial
-        ns: order in each dimension at which to evaluate the polynomial
-        Js: Jacobi matrix of each dimension's 1D polynomial
-        '''
-    us = utils.makeIter(us)
-    ns = utils.makeIter(ns)
-    Js = utils.makeIter(Js)
+
+    :param list uvec: vector value of the uncertain parameters at which to evaluate the
+        polynomial
+
+    :param list nvec: order in each dimension at which to evaluate the polynomial
+
+    :param list Jvec: Jacobi matrix of each dimension's 1D polynomial
+
+    :return: poly_value - value of the polynomial evaluated at uvec
+
+    :rtype: float
+
+    '''
+    us = utils.makeIter(uvec)
+    ns = utils.makeIter(nvec)
+    Js = utils.makeIter(Jvec)
     return np.prod([_eval_poly_1D(u, n, J) for u, n, J in zip(us, ns, Js)])
 
 def _eval_poly_1D(s, k, Jmat):

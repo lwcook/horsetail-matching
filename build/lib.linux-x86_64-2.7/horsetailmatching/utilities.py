@@ -1,5 +1,5 @@
 import numpy as np
-from copy import copy
+import copy
 
 def makeIter(x):
     if isinstance(x, basestring):
@@ -35,7 +35,7 @@ def finiteDifference(fobj, dv, f0=None, eps=10**-6):
         dv = [dv]
 
     if len(dv) == 1:
-        fbase = copy(f0)
+        fbase = copy.copy(f0)
         fnew = fobj(dv[0] + eps)
         return float((fnew - fbase)/eps)
     else:

@@ -40,7 +40,7 @@ def mySurrogateWithGrad(u_quad, q_quad, grad_quad):
     return qmodel, gradmodel
 
 theHM = HorsetailMatching(fQOI, [u_1, u_2, u_3], jac=True,
-          ftarg_u=ftarget_u, ftarg_l=ftarget_l,
+          ftarget_u=ftarget_u, ftarget_l=ftarget_l,
           n_samples_prob=3, n_samples_int=2,
           q_integration_points=np.linspace(0, 10, 500),
           surrogate=mySurrogateWithGrad, surrogate_jac=True,

@@ -6,13 +6,12 @@
 Welcome to horsetailmatching's documentation!
 =============================================
 
-Module
+For tutorials on horsetail matching and how to use this package, please visit http://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching
+
+.. _Here: www-edc.eng.cam.ac.uk/aerotools/horsetailmatching
 
 .. automodule:: horsetailmatching
-    :members: UncertainParameter, HorsetailMatching
-
-
-Contents:
+    :members: HorsetailMatching, UncertainParameter, PolySurrogate
 
 .. toctree::
    :maxdepth: 2

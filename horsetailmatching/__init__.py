@@ -1,6 +1,6 @@
-'''Documentation for Horsetail Matching package'''
 from hm import HorsetailMatching
 from parameters import UncertainParameter
+from surrogates import PolySurrogate
 
 def joke():
     '''This is the documentation for joke'''

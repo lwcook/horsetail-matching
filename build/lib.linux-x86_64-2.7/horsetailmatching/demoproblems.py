@@ -24,3 +24,7 @@ def TP2(dv, u, jac=False):
         dqdx1 = (1./8.)*( (2*y)/40. + 5*u[0]*u[1])
         dqdx2 = (1./8.)*( (2*z)/40. - u[1]**2) + 0.1*u[1]**3
         return q, [dqdx1, dqdx2]
+
+def TP3(x, u, jac=False):
+    q = 8*np.arctan(x + 0.3) + (1./(np.arctan(x + 0.3)))*np.exp(1.5*u - 1)
+    return 1 + q
