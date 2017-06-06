@@ -1,3 +1,2 @@
 horsetailmatching
 numpy >= 1.12.1
-matplotlib >= 1.4.0

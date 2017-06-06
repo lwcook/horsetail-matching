@@ -4,7 +4,7 @@ def TP0(dv, u):
     return np.linalg.norm(np.array(dv)) + np.linalg.norm(np.array(u))
 
 def TP1(x, u, jac=False):
-    factor = 0.1*np.linalg.norm(u)
+    factor = 0.1*(u[0]**2 + u[0]*u[1] + u[1]**2)
     q = 0 + factor*(x[0]**2 + x[1]*x[0] + x[1]**2)
     if not jac:
         return q

@@ -1,3 +1,6 @@
+Integrated testing with Travis-CI: [![Build Status](https://travis-ci.org/lwcook/horsetail-matching.svg?branch=master)](https://travis-ci.org/lwcook/horsetail-matching.svg?branch=master)
+
+
 Horsetail matching is an method for optimization under uncertainty. This is a python package that implements the method. 
 
 Installation Instructions.

@@ -41,7 +41,7 @@ class PolySurrogate(object):
         self.N_poly = len(self.index_polys)
         self.coeffs = np.zeros([self.P for __ in np.arange(self.dims)])
 
-    def surrogate(u_sparse, q_sparse):
+    def surrogate(self, u_sparse, q_sparse):
         '''Combines the train and predict methods to create a surrogate
         model function fitted to the input/output combinations given in
         u_sparse and q_sparse.

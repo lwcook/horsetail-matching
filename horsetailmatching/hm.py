@@ -5,7 +5,6 @@ import math
 from collections import Iterable
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import utilities as utils
 
@@ -279,18 +278,26 @@ class HorsetailMatching(object):
         else:
             raise ValueError('Unsupported metric evalation method')
 
-    def plotHorsetail(self, *plotargs, **plotkwargs):
-        '''Function that plots the horsetail of the last design at which the
-        evalMetric method was called. It uses the matplotlib module.
-        Any arguments and key word aguments are passed to the plot() function
-        used to plot the two horsetail curves.
+    def getHorsetail(self):
+        '''Function that gets vectors of the horsetail plot at the last design
+        evaluated.
+
+        :return: (qu, hu), (ql, hl), CDFs - returns three parameters, the
+            first two are tuples containing x/y vector pairs of the
+            upper and lower bounds on the CDFs (the horsetail plot). The third
+            parameter is a list of x/y tuples for individual CDFs propagated
+            at each sampled value of the interval uncertainties
 
         *Example Usage*::
 
             >>> def myFunc(x, u): return x[0]*x[1] + u
             >>> u = UncertainParameter('uniform')
             >>> theHM = HorsetailMatching(myFunc, u)
-            >>> theHM.plotHorsetail('b', lw=0.5)
+            >>> (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+            >>> matplotlib.pyplot(x1, y1)
+            >>> matplotlib.pyplot(x2, y3)
+            >>> for (x, y) in CDFs:
+            ...     matplotlib.pyplot(x, y)
             >>> matplotlib.pyplot.show()
 
         '''
@@ -302,15 +309,11 @@ class HorsetailMatching(object):
             ql, hl = _appendPlotArrays(ql, hl, self.q_integration_points)
             qu, hu = _appendPlotArrays(qu, hu, self.q_integration_points)
 
+        CDFs = []
         for qi, hi in zip(qh, hh):
-            plt.plot(qi, hi, c='grey', alpha=0.5, lw=0.5)
-        plt.plot(ql, hl, *plotargs, **plotkwargs)
-        plt.plot([self._ftarg_l(hi) for hi in hl], hl, 'k:')
-        plt.plot(qu, hu, *plotargs, **plotkwargs)
-        plt.plot([self._ftarg_u(hi) for hi in hu], hu, 'k:')
-        plt.ylim([0,1])
-        plt.xlabel('q - Quantity of Interest')
-        plt.ylabel('h - CDF')
+            CDFs.append((qi, hi))
+
+        return (qu, hu), (ql, hl), CDFs
 
 ##############################################################################
 ##  Private methods  ##

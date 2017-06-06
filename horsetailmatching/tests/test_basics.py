@@ -4,7 +4,6 @@ import unittest
 import pdb
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
 '../../horsetailmatching/')))
@@ -12,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
 from hm import HorsetailMatching
 from parameters import UncertainParameter
 from surrogates import PolySurrogate
-from demoproblems import TP1, TP2, TP3
+from demoproblems import TP0, TP1, TP2, TP3
 
 class TestInitializations(unittest.TestCase):
 
@@ -68,6 +67,15 @@ class TestInitializations(unittest.TestCase):
 
     def testHM(self):
 
+        theHM = HorsetailMatching(TP0, UncertainParameter('uniform'))
+        theHM.evalMetric([0, 1])
+        theHM = HorsetailMatching(TP0, UncertainParameter('interval'))
+        theHM.evalMetric([0, 1])
+        theHM = HorsetailMatching(TP0, UncertainParameter('gaussian'))
+        theHM.evalMetric([0, 1])
+        theHM = HorsetailMatching(TP0, [UncertainParameter('gaussian')])
+        theHM.evalMetric([0, 1])
+
         def fqoi(x, u):
             return TP1(x, u, jac=False)
 
@@ -80,12 +88,15 @@ class TestInitializations(unittest.TestCase):
         def ftarget(h):
             return 0
 
-        uparams = [UncertainParameter('uniform')]
+        uparams = [UncertainParameter('uniform'),
+                UncertainParameter('uniform')]
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget)
         theHM.evalMetric([0, 0], method='empirical')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.uncertain_parameters = uparams
         theHM.evalMetric([0, 0], method='kernel')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         uparams = [UncertainParameter('uniform'),
                 UncertainParameter('interval')]
@@ -93,6 +104,7 @@ class TestInitializations(unittest.TestCase):
                 n_samples_prob=5, n_samples_int=3)
 
         theHM.evalMetric([0,0], method='kernel')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         uparams = [UncertainParameter('uniform'),
                 UncertainParameter('interval'),
@@ -100,7 +112,9 @@ class TestInitializations(unittest.TestCase):
         theHM.uncertain_parameters = uparams
 
         theHM.evalMetric([0,0], method='kernel')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
         theHM.evalMetric([0,0], method='empirical')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM = HorsetailMatching(fqoi, uparams,
                 verbose=True, reuse_samples=True)
@@ -109,7 +123,9 @@ class TestInitializations(unittest.TestCase):
                 UncertainParameter('interval')]
         theHM.uncertain_parameters = uparams
         theHM.evalMetric([1,1], method='kernel')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
         theHM.evalMetric([1,1], method='empirical')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM = HorsetailMatching(fqoi, uparams)
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget)
@@ -128,13 +144,16 @@ class TestInitializations(unittest.TestCase):
                 n_samples_int=3)
 
         theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.fqoi = fqoi
         theHM.jac = fgrad
         theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.reuse_samples = False
         theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
 
 class TestHorsetailMatching(unittest.TestCase):
@@ -177,28 +196,6 @@ class TestHorsetailMatching(unittest.TestCase):
         theHM.uncertain_parameters = up
         print(theHM.evalMetric([1]))
 
-
-class TestSurrogates(unittest.TestCase):
-
-    def testPolySurrogate(self):
-
-        def fqoi(x, u):
-            return TP1(x, u, jac=False)
-
-        def fgrad(x, u):
-            return TP1(x, u, jac=True)[1]
-
-        def fboth(x, u):
-            return TP1(x, u, jac=True)
-
-        uparams = [UncertainParameter('uniform'), UncertainParameter('interval')]
-
-        poly = PolySurrogate(dimensions=2)
-        poly_points = poly.getQuadraturePoints()
-
-        theHM = HorsetailMatching(fqoi, uparams,
-                surrogate=poly.surrogate, surrogate_jac=False,
-                u_surrogate_points=poly_points)
 
 
 if __name__ == "__main__":
