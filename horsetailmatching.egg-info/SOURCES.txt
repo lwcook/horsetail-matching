@@ -1,8 +1,0 @@
-setup.cfg
-setup.py
-horsetailmatching/__init__.py
-horsetailmatching.egg-info/PKG-INFO
-horsetailmatching.egg-info/SOURCES.txt
-horsetailmatching.egg-info/dependency_links.txt
-horsetailmatching.egg-info/not-zip-safe
-horsetailmatching.egg-info/top_level.txt

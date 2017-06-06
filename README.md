@@ -2,7 +2,9 @@ Horsetail matching is an method for optimization under uncertainty. This is a py
 
 Installation Instructions.
 
-First download the package either by:
+The easiest way to install horsetailmatching is using pip, at the command line type: "pip install horsetailmatching".
+
+Alternatively, if you prefer downloading the source files and installing using python directly, first download the package either by:
 1) Cloning this repository
 2) Downloading the repository as a .zip file
 3) Downloading as a .tar.gz file from https://pypi.python.org/pypi/horsetailmatching

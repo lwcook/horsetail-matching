@@ -3,6 +3,8 @@
 build/*
 build/
 
+horestailmatching.egg-info
+
 /*.egg-info
 
 *.sh
