@@ -1,10 +1,11 @@
 import numpy as np
 import pdb
 import warnings
+import random
+import math
+
 from operator import xor
 from inspect import isfunction
-from scipy.stats import norm
-import random
 
 import utilities as utils
 
@@ -201,13 +202,13 @@ class UncertainParameter(object):
 
         elif self.distribution == 'gaussian':
             if self.lower_bound is not None and self.upper_bound is not None:
-                truncconst = (norm.cdf((self.upper_bound - self.mean)/
+                truncconst = (_normCDF((self.upper_bound - self.mean)/
                                        self.standard_deviation) -
-                              norm.cdf((self.lower_bound - self.mean)/
+                              _normCDF((self.lower_bound - self.mean)/
                                        self.standard_deviation))
             else:
                 truncconst = 1
-            return (1./truncconst)*norm.pdf((u -
+            return (1./truncconst)*_normPDF((u -
                 self.mean)/self.standard_deviation)
 
         elif self.distribution == 'interval':
@@ -218,6 +219,12 @@ class UncertainParameter(object):
 ###############################################################################
 ## Private Functions
 ###############################################################################
+
+def _normCDF(x):
+    return (1. + math.erf(x / math.sqrt(2.)))/2.
+
+def _normPDF(x):
+    return (1./math.sqrt(2.*math.pi))*math.exp(-0.5*x**2)
 
 def _getMaxPDFVal(evalPDF, lower_bound, upper_bound):
     max_pdf_val = 0

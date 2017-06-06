@@ -1,10 +1,10 @@
 import pdb
 import time
 import warnings
+import math
 from collections import Iterable
 
 import numpy as np
-import scipy.special as scp
 import matplotlib.pyplot as plt
 
 import utilities as utils
@@ -241,6 +241,7 @@ class HorsetailMatching(object):
             >>> theHM.evalMetric(x0)
 
         '''
+
         if self.verbose:
             print('----------')
             print('At design: ' + str(x))
@@ -274,9 +275,6 @@ class HorsetailMatching(object):
             else:
                 return self._evalMetricEmpirical(q_samples)
         elif method.lower() == 'kernel':
-            if self.kernel_bandwidth is None:
-                self.kernel_bandwidth = ((4/(3.*q_samples.shape[1]))**(1/5.) *
-                        np.std(q_samples[0,:]))
             return self._evalMetricKernel(q_samples, grad_samples)
         else:
             raise ValueError('Unsupported metric evalation method')
@@ -347,6 +345,17 @@ class HorsetailMatching(object):
 
     def _evalMetricKernel(self, q_samples, grad_samples=None):
 
+        # If kernel bandwidth not specified, find it using Scott's rule
+        if self.kernel_bandwidth is None:
+            if abs(np.max(q_samples) - np.min(q_samples)) < 1e-5:
+                bw = 1e-5
+            else:
+                bw = ((4/(3.*q_samples.shape[1]))**(1/5.)
+                        * np.std(q_samples[0,:]))
+            self.kernel_bandwidth = bw
+        else:
+            bw = self.kernel_bandwidth
+
         ## Initalize arrays and prepare calculation
         if self.q_integration_points is None:
             q_min = np.amin(q_samples)
@@ -379,14 +388,12 @@ class HorsetailMatching(object):
             rmat = qis.reshape([N_quad, 1])-qjs.reshape([1, M_prob])
 
             if grad_samples is not None:
-                Kcdf, Kprime = _kernel(rmat, M_prob, self.kernel_bandwidth,
-                        bGrad=True)
+                Kcdf, Kprime = _kernel(rmat, M_prob, bw, bGrad=True)
                 for ix in np.arange(self._N_dv):
                     grad_js = grad_samples[ii, :, ix]
                     fht_grad[ii, :, ix] = Kprime.dot(-1*grad_js)
             else:
-                Kcdf = _kernel(rmat, M_prob, self.kernel_bandwidth,
-                        bGrad=False)
+                Kcdf = _kernel(rmat, M_prob, bw, bGrad=False)
 
             fhtail[ii, :] = Kcdf.dot(np.ones([M_prob, 1])).flatten()
             qhtail[ii, :] = qis
@@ -592,17 +599,15 @@ def _getECDFfromSamples(q_samples):
 
 def _kernel(points, M=None, bw=None, ktype='gauss', bGrad=False):
 
-    if M is None:
-        M = np.array(points).size
-    if bw is None:
-        bw = (4./(3.*M))**(1./5.)*np.std(points)
-
     # NB make evaluations matrix compatible
     if ktype == 'gauss' or ktype == 'gaussian':
-        KernelMat = (1./M)*scp.ndtr(points/bw)
-    elif ktype == 'gemp':
-        bwemp = bw/100.
-        KernelMat = (1./M)*scp.ndtr(points/bwemp)
+#        KernelMat = (1./M)*scp.ndtr(points/bw)
+        KernelMat = np.zeros(points.shape)
+        for ir in np.arange(points.shape[0]):
+            for ic in np.arange(points.shape[1]):
+                KernelMat[ir, ic] = (1./M)*((1. + math.erf((points[ir,
+                    ic]/bw)/math.sqrt(2.)))/2.)
+
     elif ktype == 'step' or ktype == 'empirical':
         KernelMat = (1./M)*step(points)
     elif ktype == 'uniform' or ktype == 'uni':

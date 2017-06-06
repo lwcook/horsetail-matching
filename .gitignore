@@ -3,6 +3,7 @@
 build/*
 build/
 
+.eggs
 horestailmatching.egg-info
 
 oldcode

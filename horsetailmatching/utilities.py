@@ -1,5 +1,9 @@
 import numpy as np
 import copy
+import math
+
+def normCDF(x):
+    return (1.0 + math.erf(x / math.sqrt(2.))) / 2.0
 
 def makeIter(x):
     if isinstance(x, basestring):
