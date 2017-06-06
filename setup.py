@@ -5,17 +5,16 @@ def readme():
         return f.read()
 
 setup(name='horsetailmatching',
-        version='0.3.1',
-        description='A method for optimization under uncertainty',
+        version='0.4',
+        long_description=readme(),
         url='https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching',
-        classifiers=[
-            'License :: MIT License',
-            'Programming Language :: Python :: 2.7',
-            'Topic :: Scientific/Engineering :: Mathematics'],
+        download_url='https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching',
         author='Laurence W. Cook',
         author_email='lwc24@cam.ac.uk',
-        install_requires=['numpy', 'scipy', 'matplotlib'],
+        install_requires=['numpy', 'scipy >= 0.15.0', 'matplotlib'],
         license='MIT',
         packages=['horsetailmatching'],
         test_suite='nose.collector',
-        tests_require=['nose'])
+        tests_require=['nose'],
+        include_package_data=True,
+        zip_safe=False)
