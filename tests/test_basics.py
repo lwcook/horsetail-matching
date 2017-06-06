@@ -6,7 +6,7 @@ import pdb
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
-'../../horsetailmatching/')))
+    '../horsetailmatching/')))
 
 from hm import HorsetailMatching
 from parameters import UncertainParameter
@@ -15,6 +15,14 @@ from demoproblems import TP0, TP1, TP2, TP3
 
 class TestInitializations(unittest.TestCase):
 
+    def testDemoProblems(self):
+
+        ans = TP0([0, 1], [0, 1])
+        ans = TP1([0, 1], [0, 1])
+        ans = TP1([0, 1], [0, 1], jac=True)
+        ans = TP2([0, 1], [0, 1])
+        ans = TP2([0, 1], [0, 1], jac=True)
+        ans = TP3(1, 1)
 
     def testUncertainParameter(self):
 
@@ -30,6 +38,12 @@ class TestInitializations(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             param = UncertainParameter('baddist')
+
+        with self.assertRaises(ValueError):
+            param.upper_bound = -2
+
+        with self.assertRaises(ValueError):
+            param.lower_bound = 3
 
         param = UncertainParameter(distribution='uniform', lower_bound=-1,
                 upper_bound=1)
@@ -55,8 +69,11 @@ class TestInitializations(unittest.TestCase):
         param = UncertainParameter('interval', lower_bound=-2, upper_bound=2)
         param.getSample()
         param.evalPDF(0)
+        param.evalPDF(np.array([0]))
+        param.evalPDF([0, 1])
         self.assertAlmostEqual(param.lower_bound, -2)
         self.assertAlmostEqual(param.upper_bound, 2)
+        self.assertEqual(param.evalPDF(-100), 0)
 
         def myPDF(q): return 1/(2.5 - 1.5)
         param = UncertainParameter('custom', pdf=myPDF, lower_bound=1.5,
@@ -75,6 +92,21 @@ class TestInitializations(unittest.TestCase):
         theHM.evalMetric([0, 1])
         theHM = HorsetailMatching(TP0, [UncertainParameter('gaussian')])
         theHM.evalMetric([0, 1])
+
+        _ = theHM.uncertain_parameters
+        with self.assertRaises(ValueError):
+            theHM.uncertain_parameters = []
+
+        _ = theHM.ftarget
+
+        theHM.u_samples = None
+        with self.assertRaises(TypeError):
+            theHM.u_samples = np.array([0])
+        with self.assertRaises(TypeError):
+            theHM.u_samples = 1
+
+        with self.assertRaises(ValueError):
+            theHM.evalMetric([0, 1], method='badmethod')
 
         def fqoi(x, u):
             return TP1(x, u, jac=False)
@@ -139,21 +171,43 @@ class TestInitializations(unittest.TestCase):
 
         uparams = [UncertainParameter('uniform'),
                 UncertainParameter('interval')]
-
         theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
-                n_samples_int=3)
+                n_samples_int=3, verbose=True, reuse_samples=True)
 
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+        with self.assertRaises(TypeError):
+            theHM.evalMetric([0, 1], method='empirical')
 
         theHM.fqoi = fqoi
         theHM.jac = fgrad
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
+        theHM.uncertain_parameters = UncertainParameter('uniform')
+        theHM.fqoi=TP0
+        theHM.jac=False
+        theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+
         theHM.reuse_samples = False
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+
+        theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
+                n_samples_int=3, kernel_bandwidth=0.01, kernel_type='uniform')
+        theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+
+        theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
+                n_samples_int=3, kernel_bandwidth=0.01, kernel_type='triangle')
+        theHM.evalMetric([1, 1])
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+
+        with self.assertRaises(ValueError):
+            theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
+                    n_samples_int=3, kernel_bandwidth=0.01, kernel_type='bad')
+
 
 
 class TestHorsetailMatching(unittest.TestCase):

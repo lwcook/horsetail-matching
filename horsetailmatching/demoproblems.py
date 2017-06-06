@@ -1,11 +1,16 @@
 import numpy as np
 
 def TP0(dv, u):
+    '''Demo problem 0 for horsetail matching, takes two input vectors of any size
+    and returns a single output'''
     return np.linalg.norm(np.array(dv)) + np.linalg.norm(np.array(u))
 
 def TP1(x, u, jac=False):
-    factor = 0.1*(u[0]**2 + u[0]*u[1] + u[1]**2)
-    q = 0 + factor*(x[0]**2 + x[1]*x[0] + x[1]**2)
+    '''Demo problem 1 for horsetail matching, takes two input vectors of size 2
+    and returns just the qoi if jac is False or the qoi and its gradient if jac
+    is True'''
+    factor = 0.1*(u[0]**2 + 2*u[0]*u[1] + u[1]**2)
+    q = 0 + factor*(x[0]**2 + 2*x[1]*x[0] + x[1]**2)
     if not jac:
         return q
     else:
@@ -13,6 +18,9 @@ def TP1(x, u, jac=False):
         return q, grad
 
 def TP2(dv, u, jac=False):
+    '''Demo problem 2 for horsetail matching, takes two input vectors of size 2
+    and returns just the qoi if jac is False or the qoi and its gradient if jac
+    is True'''
     y = dv[0]/2.
     z = dv[1]/2. + 12
 
@@ -25,6 +33,8 @@ def TP2(dv, u, jac=False):
         dqdx2 = (1./8.)*( (2*z)/40. - u[1]**2) + 0.1*u[1]**3
         return q, [dqdx1, dqdx2]
 
-def TP3(x, u, jac=False):
+def TP3(x, u):
+    '''Demo problem 1 for horsetail matching, takes two input values of size 1
+    and returns just the qoi'''
     q = 8*np.arctan(x + 0.3) + (1./(np.arctan(x + 0.3)))*np.exp(1.5*u - 1)
     return 1 + q

@@ -7,8 +7,6 @@ import math
 from operator import xor
 from inspect import isfunction
 
-import utilities as utils
-
 
 class UncertainParameter(object):
     '''Class for handling uncertain parameters in optimization under
@@ -201,13 +199,10 @@ class UncertainParameter(object):
             return 1./(self.upper_bound - self.lower_bound)
 
         elif self.distribution == 'gaussian':
-            if self.lower_bound is not None and self.upper_bound is not None:
-                truncconst = (_normCDF((self.upper_bound - self.mean)/
-                                       self.standard_deviation) -
-                              _normCDF((self.lower_bound - self.mean)/
-                                       self.standard_deviation))
-            else:
-                truncconst = 1
+            truncconst = (_normCDF((self.upper_bound - self.mean)/
+                                   self.standard_deviation) -
+                          _normCDF((self.lower_bound - self.mean)/
+                                   self.standard_deviation))
             return (1./truncconst)*_normPDF((u -
                 self.mean)/self.standard_deviation)
 

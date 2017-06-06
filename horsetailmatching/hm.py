@@ -2,11 +2,10 @@ import pdb
 import time
 import warnings
 import math
+import copy
 from collections import Iterable
 
 import numpy as np
-
-import utilities as utils
 
 
 class HorsetailMatching(object):
@@ -54,6 +53,9 @@ class HorsetailMatching(object):
     :param number kernel_bandwidth: Only for method='kernel'. The bandwidth
         used in the kernel function [by default is found the first time the
         metric is evaluated using Scott's rule]
+
+    :param str kernel_type: Only for method='kernel'. The type of kernel to
+        use - 'gaussian', 'uniform', or 'triangle' [default 'gaussian'].
 
     :param function surrogate: Surrogate that is created at every design
         point to be sampled instead of fqoi. It should be a function that
@@ -122,7 +124,7 @@ class HorsetailMatching(object):
     def __init__(self, fqoi, uncertain_parameters, jac=False, method=None,
             ftarget=None,
             n_samples_prob=500, n_samples_int=20, q_integration_points=None,
-            kernel_bandwidth=None, alpha=500,
+            kernel_bandwidth=None, kernel_type='gaussian', alpha=500,
             surrogate=None, u_surrogate_points=None, surrogate_jac=False,
             reuse_samples=True, verbose=False):
 
@@ -135,6 +137,7 @@ class HorsetailMatching(object):
         self.n_samples_int = n_samples_int
         self.q_integration_points = q_integration_points
         self.kernel_bandwidth = kernel_bandwidth
+        self.kernel_type = kernel_type
         self.alpha = alpha
         self.reuse_samples = reuse_samples
         self.u_samples = None
@@ -153,7 +156,7 @@ class HorsetailMatching(object):
 
     @uncertain_parameters.setter
     def uncertain_parameters(self, params):
-        self._u_params = utils.makeIter(params)
+        self._u_params = _makeIter(params)
         if len(self._u_params) == 0:
             raise ValueError('No uncertain parameters provided')
 
@@ -206,11 +209,25 @@ class HorsetailMatching(object):
     @u_samples.setter
     def u_samples(self, samples):
         if samples is not None:
-            if not (isinstance(samples, np.ndarray) or
-                    samples.size != self._processDimensions()):
+            if (not isinstance(samples, np.ndarray) or
+                    samples.shape != self._processDimensions()):
                 raise TypeError('u_samples should be a np.array of size'
                         '(n_samples_prob, n_samples_int, num_uncertanities)')
         self._u_samples = samples
+
+    @property
+    def kernel_type(self):
+        return self._kernel_type
+
+    @kernel_type.setter
+    def kernel_type(self, value):
+        allowed_types = ['gaussian', 'uniform', 'triangle']
+        if value not in allowed_types:
+            raise ValueError('Kernel type must be one of'+
+                    ', '.join([str(t) for t in allowed_types]))
+        else:
+            self._kernel_type = value
+
 
 ##############################################################################
 ##  Public Methods
@@ -248,7 +265,7 @@ class HorsetailMatching(object):
         # Make sure dimensions are correct
         u_sample_dimensions = self._processDimensions()
 
-        self._N_dv = len(utils.makeIter(x))
+        self._N_dv = len(_makeIter(x))
 
         if method is None:
             method = self.method
@@ -365,6 +382,7 @@ class HorsetailMatching(object):
             q_max = np.amax(q_samples)
             q_range = q_max - q_min
             qis = np.linspace(q_min - q_range, q_max + q_range, 100)
+            self.q_integration_points = qis
         else:
             qis = self.q_integration_points
         N_quad = len(qis)
@@ -391,12 +409,14 @@ class HorsetailMatching(object):
             rmat = qis.reshape([N_quad, 1])-qjs.reshape([1, M_prob])
 
             if grad_samples is not None:
-                Kcdf, Kprime = _kernel(rmat, M_prob, bw, bGrad=True)
+                Kcdf, Kprime = _kernel(rmat, M_prob, bw=bw,
+                        ktype=self.kernel_type, bGrad=True)
                 for ix in np.arange(self._N_dv):
                     grad_js = grad_samples[ii, :, ix]
                     fht_grad[ii, :, ix] = Kprime.dot(-1*grad_js)
             else:
-                Kcdf = _kernel(rmat, M_prob, bw, bGrad=False)
+                Kcdf = _kernel(rmat, M_prob, bw=bw, ktype=self.kernel_type,
+                        bGrad=False)
 
             fhtail[ii, :] = Kcdf.dot(np.ones([M_prob, 1])).flatten()
             qhtail[ii, :] = qis
@@ -432,8 +452,8 @@ class HorsetailMatching(object):
             print('Metric: ' + str(dhat))
 
         if grad_samples is not None:
-            tu_pr = np.array([utils.finDiff(self._ftarg_u, hi) for hi in hu])
-            tl_pr = np.array([utils.finDiff(self._ftarg_l, hi) for hi in hl])
+            tu_pr = np.array([_finDiff(self._ftarg_u, hi) for hi in hu])
+            tl_pr = np.array([_finDiff(self._ftarg_l, hi) for hi in hl])
             for ix in np.arange(self._N_dv):
                 Du_grad[ix] = _matrix_grad(qis, hu, hu_grad[:, ix], tu, tu_pr)
                 Dl_grad[ix] = _matrix_grad(qis, hl, hl_grad[:, ix], tl, tl_pr)
@@ -474,8 +494,6 @@ class HorsetailMatching(object):
 
         else:
             g_sparse = np.zeros([N_sparse, self._N_dv])
-            fpartial = [lambda u: 0 for _ in np.arange(self._N_dv)]
-
             for iu, u in enumerate(u_sparse):
                 if isinstance(self.jac, bool) and self.jac:
                     q_sparse[iu], g_sparse[iu, :] = self.fqoi(x, u)
@@ -484,10 +502,12 @@ class HorsetailMatching(object):
                     g_sparse[iu, :] = self.jac(x, u)
 
             if not self.surrogate_jac:
+                fpartial = [lambda u: 0 for _ in np.arange(self._N_dv)]
                 surr_qoi = self.surrogate(u_sparse, q_sparse)
                 for k in np.arange(self._N_dv):
                     fpartial[k] = self.surrogate(u_sparse, g_sparse[:, k])
-                def surr_grad(u): return [f(u) for f in fpartial]
+                def surr_grad(u):
+                    return [f(u) for f in fpartial]
             else:
                 if isinstance(self.surrogate_jac, bool) and self.surrogate_jac:
                     surr_qoi, surr_grad = self.surrogate(
@@ -535,7 +555,8 @@ class HorsetailMatching(object):
             self.u_samples = u_samples
             return u_samples
         else:
-            if self.verbose: print('Re-using stored samples')
+            if self.verbose:
+                print('Re-using stored samples')
             return self.u_samples
 
     def _getOneSample(self, u_params, N_u):
@@ -594,55 +615,6 @@ class HorsetailMatching(object):
 ##  Private functions
 ##############################################################################
 
-def _getECDFfromSamples(q_samples):
-    vq = np.sort(q_samples)
-    M = len(q_samples)
-    vh = [(1./M)*(0.5 + j) for j in range(M)]
-    return vq, vh
-
-def _kernel(points, M=None, bw=None, ktype='gauss', bGrad=False):
-
-    # NB make evaluations matrix compatible
-    if ktype == 'gauss' or ktype == 'gaussian':
-#        KernelMat = (1./M)*scp.ndtr(points/bw)
-        KernelMat = np.zeros(points.shape)
-        for ir in np.arange(points.shape[0]):
-            for ic in np.arange(points.shape[1]):
-                KernelMat[ir, ic] = (1./M)*((1. + math.erf((points[ir,
-                    ic]/bw)/math.sqrt(2.)))/2.)
-
-    elif ktype == 'step' or ktype == 'empirical':
-        KernelMat = (1./M)*step(points)
-    elif ktype == 'uniform' or ktype == 'uni':
-        KernelMat = (1./M)*ramp(points, width=bw*np.sqrt(12))
-    elif ktype == 'triangle' or ktype == 'tri':
-        KernelMat = (1./M)*trint(points, width=bw*2.*np.sqrt(6))
-
-    if bGrad:
-        if ktype == 'gauss' or ktype == 'gaussian':
-            const_term = 1.0/(M * np.sqrt(2*np.pi*bw**2))
-            KernelGradMat = const_term * np.exp(-(1./2.) * (points/bw)**2)
-        elif ktype == 'gemp':
-            const = 1.0/(M * np.sqrt(2*np.pi*bwemp**2))
-            KernelGradMat = const * np.exp(-(1./2.) * (points/bwemp)**2)
-        elif ktype == 'uniform' or ktype == 'uni':
-            width = bw*np.sqrt(12)
-            const = (1./M)*(1./width)
-            KernelGradMat = const*(step(points+width/2) -
-                                   step(points-width/2))
-        elif ktype == 'triangle' or ktype == 'tri':
-            width = bw*2.*np.sqrt(6)
-            const = (1./M)*(2./width)
-            KernelGradMat = const*(ramp(points+width/4, width/2) -
-                                   ramp(points-width/4, width/2))
-        else:
-            KernelGradMat = 0*points
-            print('Warning: kernel type gradient not supported')
-
-        return KernelMat, KernelGradMat
-    else:
-        return KernelMat
-
 def _extalg(xarr, alpha=100):
     '''Given an array xarr of values, smoothly return the max/min'''
     return sum(xarr * np.exp(alpha*xarr))/sum(np.exp(alpha*xarr))
@@ -654,6 +626,59 @@ def _extgrad(xarr, alpha=100):
     term2 = 1 + alpha*(xarr - _extalg(xarr, alpha))
 
     return term1*term2
+
+def _ramp(x, width):
+    return _minsmooth(1, _maxsmooth(0, (x - width/2)*(1/width)))
+
+def _trint(x, width):
+    w = width/2.
+    xb = _maxsmooth(-w, _minsmooth(x, w))
+    y1 = 0.5 + xb/w + xb**2/(2*w**2)
+    y2 = xb/w - xb**2/(2*w**2)
+    return _minsmooth(y1, 0.5) + _maxsmooth(y2, 0.0)
+
+def _minsmooth(a, b, eps=0.0000):
+    return 0.5*(a + b - np.sqrt((a-b)**2 + eps**2))
+
+def _maxsmooth(a, b, eps=0.0000):
+    return 0.5*(a + b + np.sqrt((a-b)**2 + eps**2))
+
+def _step(x):
+    return 1 * (x > 0)
+
+def _kernel(points, M=None, bw=None, ktype='gauss', bGrad=False):
+
+    # NB make evaluations matrix compatible
+    if ktype == 'gauss' or ktype == 'gaussian':
+        KernelMat = np.zeros(points.shape)
+        for ir in np.arange(points.shape[0]):
+            for ic in np.arange(points.shape[1]):
+                KernelMat[ir, ic] = (1./M)*((1. +
+                    math.erf((points[ir, ic]/bw)/math.sqrt(2.)))/2.)
+
+    elif ktype == 'uniform' or ktype == 'uni':
+        KernelMat = (1./M)*_ramp(points, width=bw*np.sqrt(12))
+    elif ktype == 'triangle' or ktype == 'tri':
+        KernelMat = (1./M)*_trint(points, width=bw*2.*np.sqrt(6))
+
+    if bGrad:
+        if ktype == 'gauss' or ktype == 'gaussian':
+            const_term = 1.0/(M * np.sqrt(2*np.pi*bw**2))
+            KernelGradMat = const_term * np.exp(-(1./2.) * (points/bw)**2)
+        elif ktype == 'uniform' or ktype == 'uni':
+            width = bw*np.sqrt(12)
+            const = (1./M)*(1./width)
+            KernelGradMat = const*(_step(points+width/2) -
+                                   _step(points-width/2))
+        elif ktype == 'triangle' or ktype == 'tri':
+            width = bw*2.*np.sqrt(6)
+            const = (1./M)*(2./width)
+            KernelGradMat = const*(_ramp(points+width/4, width/2) -
+                                   _ramp(points-width/4, width/2))
+
+        return KernelMat, KernelGradMat
+    else:
+        return KernelMat
 
 def _matrix_integration(q, h, t):
     ''' Returns the dp metric for a single horsetail
@@ -701,15 +726,18 @@ def _appendPlotArrays(q, h, q_integration_points):
     h = np.append(h, 1)
     return q, h
 
-def _appendPlotArrays(q, h, q_integration_points):
-    q = np.insert(q, 0, q[0])
-    h = np.insert(h, 0, 0)
-    q = np.insert(q, 0, min(q_integration_points))
-    h = np.insert(h, 0, 0)
-    q = np.append(q, q[-1])
-    h = np.append(h, 1)
-    q = np.append(q, max(q_integration_points))
-    h = np.append(h, 1)
-    return q, h
+def _finDiff(fobj, dv, f0=None, eps=10**-6):
 
+    if f0 is None:
+        f0 = fobj(dv)
 
+    fbase = copy.copy(f0)
+    fnew = fobj(dv + eps)
+    return float((fnew - fbase)/eps)
+
+def _makeIter(x):
+    try:
+        iter(x)
+        return [xi for xi in x]
+    except:
+        return [x]

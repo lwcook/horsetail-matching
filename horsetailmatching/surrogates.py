@@ -2,7 +2,6 @@ import numpy as np
 import math
 import pdb
 
-import utilities as utils
 
 class PolySurrogate(object):
     '''Class for creating surrogate models using non-intrusive polynomial
@@ -33,7 +32,7 @@ class PolySurrogate(object):
         if isinstance(poly_type, basestring):
             self.poly_types = [poly_type for _ in np.arange(self.dims)]
         else:
-            self.poly_types = utils.makeIter(poly_type)
+            self.poly_types = _makeIter(poly_type)
         self.J_list = [_define_poly_J(p, self.P) for p in self.poly_types]
 
         imesh = np.meshgrid(*[np.arange(self.P) for d in np.arange(self.dims)])
@@ -189,9 +188,9 @@ def eval_poly(uvec, nvec, Jvec):
     :rtype: float
 
     '''
-    us = utils.makeIter(uvec)
-    ns = utils.makeIter(nvec)
-    Js = utils.makeIter(Jvec)
+    us = _makeIter(uvec)
+    ns = _makeIter(nvec)
+    Js = _makeIter(Jvec)
     return np.prod([_eval_poly_1D(u, n, J) for u, n, J in zip(us, ns, Js)])
 
 def _eval_poly_1D(s, k, Jmat):
@@ -261,3 +260,10 @@ def _define_poly_J(typestr, order, a=1, b=1):
         J[n-1, n-2] = math.sqrt(ab[n-1, 1])
 
     return J
+
+def _makeIter(x):
+    try:
+        iter(x)
+        return [xi for xi in x]
+    except:
+        return [x]
