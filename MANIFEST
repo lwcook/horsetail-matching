@@ -4,8 +4,10 @@ setup.cfg
 setup.py
 horsetailmatching/__init__.py
 horsetailmatching/_hmold.py
+horsetailmatching/_nipcold.py
 horsetailmatching/demoproblems.py
 horsetailmatching/hm.py
 horsetailmatching/parameters.py
+horsetailmatching/surrogates.py
 horsetailmatching/utilities.py
 horsetailmatching/utilitiesold.py
