@@ -5,6 +5,8 @@ build/
 
 horestailmatching.egg-info
 
+oldcode
+
 /*.egg-info
 
 *.sh

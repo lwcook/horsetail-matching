@@ -2,16 +2,6 @@ from hm import HorsetailMatching
 from parameters import UncertainParameter
 from surrogates import PolySurrogate
 
-def joke():
-    '''This is the documentation for joke'''
-    return "Please Laugh, I Beg You"
-
-
-def talk():
-    '''This is the documentation for talk'''
-    return "Hello World"
-
-
 def main():
     pass
 

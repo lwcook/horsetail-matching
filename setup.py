@@ -1,14 +1,13 @@
-from distutils.core import setup
+from setuptools import setup
 
 def readme():
     with open('README.md', 'r') as f:
         return f.read()
 
 setup(name='horsetailmatching',
-        version='0.3',
+        version='0.3.1',
         description='A method for optimization under uncertainty',
         url='https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching',
-        download_url='https://github.com/lwcook/horsetail-matching/archive/0.3.targ.gz',
         classifiers=[
             'License :: MIT License',
             'Programming Language :: Python :: 2.7',
