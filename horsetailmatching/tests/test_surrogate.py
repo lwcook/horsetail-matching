@@ -86,7 +86,7 @@ class TestSurrogate(unittest.TestCase):
 
         theHM = HorsetailMatching(fboth, [u_1, u_2, u_3], jac=True,
                   ftarget=(ftarget_u, ftarget_l),
-                  n_samples_prob=3, n_samples_int=2,
+                  n_samples_prob=5, n_samples_int=3,
                   q_integration_points=np.linspace(0, 10, 500),
                   kernel_bandwidth=0.01)
         ans1, grad1 = theHM.evalMetric([0, 1])

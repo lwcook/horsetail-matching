@@ -3,6 +3,8 @@
 build/*
 build/
 
+cover/
+
 .eggs
 horestailmatching.egg-info
 
