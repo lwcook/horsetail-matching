@@ -33,8 +33,13 @@ def TP2(dv, u, jac=False):
         dqdx2 = (1./8.)*( (2*z)/40. - u[1]**2) + 0.1*u[1]**3
         return q, [dqdx1, dqdx2]
 
-def TP3(x, u):
-    '''Demo problem 1 for horsetail matching, takes two input values of size 1
-    and returns just the qoi'''
-    q = 8*np.arctan(x + 0.3) + (1./(np.arctan(x + 0.3)))*np.exp(1.5*u - 1)
-    return 1 + q
+def TP3(x, u, jac=False):
+    '''Demo problem 1 for horsetail matching, takes two input values of
+    size 1'''
+
+    q = 2 + 0.5*x + 1.5*(1-x)*u
+    if not jac:
+        return q
+    else:
+        grad = 1 - 0.9*u
+        return q, grad

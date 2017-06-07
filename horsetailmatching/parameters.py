@@ -10,22 +10,24 @@ from inspect import isfunction
 
 class UncertainParameter(object):
     '''Class for handling uncertain parameters in optimization under
-    uncertainty problems using horsetail matching.
+    uncertainty problems using horsetail matching. The main attribute required
+    for use with the HorsetailMatching class is the getSample() method.
 
     :param str distribution: distribution type of the uncertain parameter.
         Supported distributions are uniform, gaussian, custom (must provide a
         function to the pdf argument) [default uniform]
 
-    :param double mean: mean value of the distribution [default 0]
+    :param double mean: mean value of the distribution. Use with
+        distribution='gaussian' [default 0]
 
-    :param double standard_deviation: standard deviation of the distribution
-        [default 1]
+    :param double standard_deviation: standard deviation of the distribution.
+        Use with  distribution='gaussian' [default 1]
 
-    :param double lower_bound: lower bound of the distribution (overrides by
-        mean and standard_devaition inputs) [default -1]
+    :param double lower_bound: lower bound of the distribution, use with
+        distribution='uniform' [default 0]
 
-    :param double upper_bound: upper bound of the distribution (overrides by
-        mean and standard_devaition inputs) [default 1]
+    :param double upper_bound: upper bound of the distribution, use with
+        distribution='uniform' [default 1]
 
     :param function pdf: pdf function to use distribution (overrides all other
         inputs)

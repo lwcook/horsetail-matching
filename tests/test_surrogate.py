@@ -22,14 +22,14 @@ class TestSurrogate(unittest.TestCase):
         uparam = UncertainParameter('uniform')
 
         poly1 = PolySurrogate(dimensions=1, order=0, poly_type='hermite')
-        theHM = HorsetailMatching(fqoi, uparam, n_samples_prob=10,
+        theHM = HorsetailMatching(fqoi, uparam, samples_prob=10,
             surrogate=poly1.surrogate,
-            u_surrogate_points=poly1.getQuadraturePoints())
+            surrogate_points=poly1.getQuadraturePoints())
         ans1 = theHM.evalMetric(1)
 
         poly2 = PolySurrogate(dimensions=1, order=0, poly_type=['legendre'])
         theHM.surrogate=poly2.surrogate
-        theHM.u_surrogate_points=poly2.getQuadraturePoints()
+        theHM.surrogate_points=poly2.getQuadraturePoints()
         ans2 = theHM.evalMetric(1)
         self.assertAlmostEqual(poly1.coeffs[0], poly2.coeffs[0])
 
@@ -37,7 +37,7 @@ class TestSurrogate(unittest.TestCase):
         poly2.predict(1)
 
         poly2 = PolySurrogate(dimensions=1, order=0, poly_type=['legendre'])
-        theHM = HorsetailMatching(fqoi, uparam, n_samples_prob=10,
+        theHM = HorsetailMatching(fqoi, uparam, samples_prob=10,
                 surrogate=poly2.surrogate)
         theHM.evalMetric(1)
 
@@ -47,29 +47,29 @@ class TestSurrogate(unittest.TestCase):
         uparams = [UncertainParameter('uniform'), UncertainParameter('uniform')]
         poly = PolySurrogate(dimensions=2, order=3)
 
-        theHM = HorsetailMatching(fqoi, uparams, n_samples_prob=10)
+        theHM = HorsetailMatching(fqoi, uparams, samples_prob=10)
         ansTrue = theHM.evalMetric([0, 1])
 
         theHM.surrogate = poly.surrogate
         theHM.surrogate_jac = False
-        theHM.u_surrogate_points = poly.getQuadraturePoints()
+        theHM.surrogate_points = poly.getQuadraturePoints()
         theHM.evalMetric([0, 1])
         ans1 = theHM.evalMetric([0, 1])
 
         self.assertAlmostEqual(ansTrue, ans1)
 
         theHM.surrogate = poly.surrogate
-        theHM.u_surrogate_points = poly.getQuadraturePoints()
+        theHM.surrogate_points = poly.getQuadraturePoints()
         ans2 = theHM.evalMetric([0, 1])
 
         poly = PolySurrogate(dimensions=2, order=3)
         theHM.surrogate = poly.surrogate
-        theHM.u_surrogate_points = poly.getQuadraturePoints()
+        theHM.surrogate_points = poly.getQuadraturePoints()
         ans3 = theHM.evalMetric([0, 1])
 
         poly = PolySurrogate(dimensions=2, order=4)
         theHM.surrogate = poly.surrogate
-        theHM.u_surrogate_points = poly.getQuadraturePoints()
+        theHM.surrogate_points = poly.getQuadraturePoints()
         ans4 = theHM.evalMetric([0, 1])
 
         self.assertAlmostEqual(ans1, ans2)
@@ -78,7 +78,7 @@ class TestSurrogate(unittest.TestCase):
 
         theHM = HorsetailMatching(fqoi, uparams,
                 surrogate=poly.surrogate, surrogate_jac=True,
-                u_surrogate_points=poly.getQuadraturePoints())
+                surrogate_points=poly.getQuadraturePoints())
 
     def testPolySurrogateGrad(self):
 
@@ -131,14 +131,14 @@ class TestSurrogate(unittest.TestCase):
 
         theHM = HorsetailMatching(fqoi, [u_1, u_2, u_3], jac=fgrad,
                   ftarget=(ftarget_u, ftarget_l),
-                  n_samples_prob=3, n_samples_int=2,
-                  q_integration_points=np.linspace(0, 5, 10),
+                  samples_prob=3, samples_int=2,
+                  integration_points=np.linspace(0, 5, 10),
                   kernel_bandwidth=0.01)
         ansTrue, gradTrue = theHM.evalMetric([0, 1])
 
         theHM.surrogate = mySurrogateWithGrad
         theHM.surrogate_jac = True
-        theHM.u_surrogate_points = u_quad_points
+        theHM.surrogate_points = u_quad_points
         ans0, grad0 = theHM.evalMetric([0, 1])
 
         self.assertAlmostEqual(ansTrue, ans0)

@@ -4,18 +4,29 @@ import matplotlib.pyplot as plt
 from horsetailmatching import UncertainParameter, HorsetailMatching
 from horsetailmatching.demoproblems import TP1
 
-u1 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
-u2 = UncertainParameter('gaussian', mean=0, standard_deviation=1)
+def main():
 
-def my_target(h): return 0
+    u1 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
+    u2 = UncertainParameter('gaussian', mean=0, standard_deviation=1)
 
-theHM = HorsetailMatching(my_func, [u1, u2], ftarget=my_target)
+    def my_target(h): return 0
 
-print(theHM.evalMetric(x=[1,1]))
+    theHM = HorsetailMatching(TP1, [u1, u2], ftarget=my_target)
 
-theHM.plotHorsetail('b')
-plt.xlim([-0.1, 1])
-plt.show()
+    print(theHM.evalMetric(x=[1, 3]))
 
-solution = minimize(theHM.evalMetric, x0=[3,2], method='Nelder-Mead')
-print(solution)
+    (x, y), _, _ = theHM.getHorsetail()
+    plt.plot(x, y, 'b', label='Initial CDF')
+
+    solution = minimize(theHM.evalMetric, x0=[1, 3], method='Nelder-Mead')
+    print(solution)
+
+    (x, y), _, _ = theHM.getHorsetail()
+    plt.plot(x, y, 'r', label='Optimum CDF')
+    plt.plot([theHM.ftarget(yi) for yi in y], y, 'k--', label='Target')
+    plt.xlim([-1, 15])
+    plt.legend(loc='lower right')
+    plt.show()
+
+if __name__ == "__main__":
+    main()

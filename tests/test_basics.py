@@ -23,6 +23,7 @@ class TestInitializations(unittest.TestCase):
         ans = TP2([0, 1], [0, 1])
         ans = TP2([0, 1], [0, 1], jac=True)
         ans = TP3(1, 1)
+        ans = TP3(1, 1, jac=True)
 
     def testUncertainParameter(self):
 
@@ -133,7 +134,7 @@ class TestInitializations(unittest.TestCase):
         uparams = [UncertainParameter('uniform'),
                 UncertainParameter('interval')]
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget,
-                n_samples_prob=5, n_samples_int=3)
+                samples_prob=5, samples_int=3)
 
         theHM.evalMetric([0,0], method='kernel')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
@@ -162,17 +163,17 @@ class TestInitializations(unittest.TestCase):
         theHM = HorsetailMatching(fqoi, uparams)
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget)
         theHM = HorsetailMatching(fqoi, uparams, ftarget=(ftarget, ftarget))
-        theHM = HorsetailMatching(fqoi, uparams, n_samples_prob=500,
-                n_samples_int = 50)
+        theHM = HorsetailMatching(fqoi, uparams, samples_prob=500,
+                samples_int = 50)
 
         theHM = HorsetailMatching(fqoi, uparams, method='kernel',
-                q_integration_points=np.linspace(0, 10, 100),
+                integration_points=np.linspace(0, 10, 100),
                 kernel_bandwidth=0.01)
 
         uparams = [UncertainParameter('uniform'),
                 UncertainParameter('interval')]
-        theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
-                n_samples_int=3, verbose=True, reuse_samples=True)
+        theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
+                samples_int=3, verbose=True, reuse_samples=True)
 
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
@@ -194,19 +195,19 @@ class TestInitializations(unittest.TestCase):
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
-        theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
-                n_samples_int=3, kernel_bandwidth=0.01, kernel_type='uniform')
+        theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
+                samples_int=3, kernel_bandwidth=0.01, kernel_type='uniform')
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
-        theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
-                n_samples_int=3, kernel_bandwidth=0.01, kernel_type='triangle')
+        theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
+                samples_int=3, kernel_bandwidth=0.01, kernel_type='triangle')
         theHM.evalMetric([1, 1])
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         with self.assertRaises(ValueError):
-            theHM = HorsetailMatching(fboth, uparams, jac=True, n_samples_prob=5,
-                    n_samples_int=3, kernel_bandwidth=0.01, kernel_type='bad')
+            theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
+                    samples_int=3, kernel_bandwidth=0.01, kernel_type='bad')
 
 
 
@@ -220,7 +221,7 @@ class TestHorsetailMatching(unittest.TestCase):
 
         uparams = [UncertainParameter('uniform')]
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget,
-                q_integration_points=np.linspace(0.99, 1.01, 100),
+                integration_points=np.linspace(0.99, 1.01, 100),
                 kernel_bandwidth=0.0001)
         ans = theHM.evalMetric([0])
         self.assertAlmostEqual(ans, np.sqrt(2), places=5)
@@ -233,7 +234,7 @@ class TestHorsetailMatching(unittest.TestCase):
 
         up = [UncertainParameter('uniform'), UncertainParameter('interval')]
         theHM = HorsetailMatching(fqoi, up, ftarget=(ftarget, ftarget),
-                n_samples_prob=100, n_samples_int=50)
+                samples_prob=100, samples_int=50)
         ans = theHM.evalMetric([0])
         self.assertTrue(abs(ans - 2.05) < 5e-2)
 
@@ -241,12 +242,12 @@ class TestHorsetailMatching(unittest.TestCase):
         fqoi = lambda x, u: u
         up = UncertainParameter('uniform')
         theHM = HorsetailMatching(fqoi, up, ftarget=ftarget,
-                n_samples_prob=1000)
+                samples_prob=1000)
         ans = theHM.evalMetric([0])
         self.assertTrue(abs(ans - 1.4) < 1e-1)
 
         up = UncertainParameter('interval')
-        theHM.n_samples_int=50
+        theHM.samples_int=50
         theHM.uncertain_parameters = up
         print(theHM.evalMetric([1]))
 
