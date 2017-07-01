@@ -11,7 +11,7 @@ For tutorials on horsetail matching and how to use this package, please visit ht
 .. _Here: www-edc.eng.cam.ac.uk/aerotools/horsetailmatching
 
 .. automodule:: horsetailmatching
-    :members: HorsetailMatching, UncertainParameter, PolySurrogate
+    :members: HorsetailMatching, UncertainParameter, UniformParameter, GaussianParameter, IntervalParameter, PolySurrogate
 
 .. toctree::
    :maxdepth: 2

@@ -1,6 +1,5 @@
 import pdb
 import time
-import warnings
 import math
 import copy
 
@@ -170,7 +169,7 @@ class HorsetailMatching(object):
 
         self._u_int, self._u_prob = [], []
         for ii, u in enumerate(self._u_params):
-            if u.distribution == 'interval':
+            if u.is_interval_uncertainty:
                 self._u_int.append((ii, u))
             else:
                 self._u_prob.append((ii, u))
@@ -376,8 +375,8 @@ class HorsetailMatching(object):
 
         # If kernel bandwidth not specified, find it using Scott's rule
         if self.kernel_bandwidth is None:
-            if abs(np.max(q_samples) - np.min(q_samples)) < 1e-5:
-                bw = 1e-5
+            if abs(np.max(q_samples) - np.min(q_samples)) < 1e-6:
+                bw = 1e-6
             else:
                 bw = 0.1*((4/(3.*q_samples.shape[1]))**(1/5.)
                           *np.std(q_samples[0,:]))

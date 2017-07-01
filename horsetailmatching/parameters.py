@@ -9,98 +9,46 @@ from inspect import isfunction
 
 
 class UncertainParameter(object):
-    '''Class for handling uncertain parameters in optimization under
-    uncertainty problems using horsetail matching. The main attribute required
-    for use with the HorsetailMatching class is the getSample() method.
+    '''Base Class for handling uncertain parameters in optimization under
+    uncertainty problems using horsetail matching. If this class is used, a
+    custom distribution must be provided. Otherwise one of the child classes
+    UniformParameter, IntervalParameter, or GaussianParameter should be used.
 
-    :param str distribution: distribution type of the uncertain parameter.
-        Supported distributions are uniform, gaussian, custom (must provide a
-        function to the pdf argument) [default uniform]
+    All child classes use the methods getSample and evalPDF.
 
-    :param double mean: mean value of the distribution. Use with
-        distribution='gaussian' [default 0]
+    :param function pdf: pdf function of distribution. Bounds on the
+        distribution should also be provided via the lower_bound and
+        upper_bound arguments.
 
-    :param double standard_deviation: standard deviation of the distribution.
-        Use with  distribution='gaussian' [default 1]
+    :param double lower_bound: lower bound of the distribution [default -1]
 
-    :param double lower_bound: lower bound of the distribution, use with
-        distribution='uniform' [default 0]
-
-    :param double upper_bound: upper bound of the distribution, use with
-        distribution='uniform' [default 1]
-
-    :param function pdf: pdf function to use distribution (overrides all other
-        inputs)
+    :param double upper_bound: upper bound of the distribution [default 1]
 
     *Example Declaration* ::
 
-        >>> u = UncertainParameter('uniform')
-        >>> u = UncertainParameter('gaussian')
-        >>> u = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
-        >>> u = UncertainParameter('gaussian', mean=0, standard_deviation=1)
-        >>> u = UncertainParameter('interval', lower_bound=-1, upper_bound=1)
-        >>> def myPDF(q): return 1/(2.5 - 1.5)
-        >>> u = UncertainParameter('custom', pdf=myPDF, lower_bound=1.5,
-                upper_bound=2.5)
+        >>> def myPDF(q):
+            if q > 2.5 or q < 1.5:
+                return 0
+            else:
+                return 1/(2.5 - 1.5)
+        >>> u = UncertainParameter(pdf=myPDF, lower_bound=1.5, upper_bound=2.5)
 
     '''
 
-    featured_dists = ['interval', 'uniform', 'gaussian', 'custom']
-    default_mean = 0
-    default_std = 1
     default_lb = -1
     default_ub = 1
 
-    def __init__(self, distribution='uniform', mean=default_mean,
-            standard_deviation=default_std, pdf=None,
-            lower_bound=default_lb, upper_bound=default_ub):
+    def __init__(self, pdf=None, lower_bound=default_lb, upper_bound=default_ub):
 
+        self.pdf = pdf
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
-        self.pdf = pdf
-
-        self.mean, self.standard_deviation = mean, standard_deviation
-        self.lower_bound, self.upper_bound = lower_bound, upper_bound
-
-        self.distribution = distribution
-
-        # Private attributes
-        self._returned_limits = []
+        self.is_interval_uncertainty = False
         self._max_pdf_val = None
 
 ###############################################################################
 ## Properties with non-trivail setting behaviour
 ###############################################################################
-
-    @property
-    def distribution(self):
-        return self._distribution
-
-    @distribution.setter
-    def distribution(self, value):
-
-        value = value.lower()
-
-        if value not in self.featured_dists:
-            raise ValueError(
-                    '''Unsupported distribution type; the following
-                    distributions are currently supported: ''' +
-                    ', '.join([str(e) for e in self.featured_dists]))
-
-        if value == 'uniform':
-            self.mean = 0.5*(self.lower_bound + self.upper_bound)
-            self.standard_deviation = ((self.upper_bound - self.lower_bound) /
-                np.sqrt(3))/2.
-
-        elif value == 'gaussian':
-            self.lower_bound = self.mean - 5*self.standard_deviation
-            self.upper_bound = self.mean + 5*self.standard_deviation
-
-        if xor(value == 'custom', self.pdf is not None):
-            raise ValueError('''A pdf function is only compatible with
-                custom distribution''')
-
-        self._distribution = value
 
     @property
     def lower_bound(self):
@@ -133,34 +81,12 @@ class UncertainParameter(object):
 
         *Example Usage* ::
 
-            >>> u = UncertainParameter('uniform')
+            >>> u = UniformParameter()
             >>> u_sample = u.getSample()
 
         '''
-
-        if self.distribution == 'interval':
-            if len(self._returned_limits) < 1:
-                self._returned_limits.append(self.lower_bound)
-                return self.lower_bound
-            elif len(self._returned_limits) < 2:
-                self._returned_limits.append(self.upper_bound)
-                return self.upper_bound
-
-        if self.distribution == 'uniform' or self.distribution == 'interval':
-            return random.uniform(self.lower_bound, self.upper_bound)
-        elif self.distribution == 'gaussian':
-            return random.gauss(self.mean, self.standard_deviation)
-        else:  # Rejection sampling
-            if self._max_pdf_val is None:
-                self._max_pdf_val = _getMaxPDFVal(self.evalPDF,
-                        self.lower_bound, self.upper_bound)
-            while True:
-                zscale = self._max_pdf_val*1.1
-                uval = (self.lower_bound +
-                    np.random.random()*(self.upper_bound-self.lower_bound))
-                zval = zscale*np.random.random()
-                if zval < self.evalPDF(uval):
-                    return uval
+        ## _getSample is overwritten in child classes
+        return self._getSample()
 
     def evalPDF(self, u_values):
         '''Returns the PDF of the uncertain parameter evaluated at the values
@@ -171,7 +97,7 @@ class UncertainParameter(object):
 
         *Example Usage* ::
 
-            >>> u = UncertainParameter('uniform')
+            >>> u = UniformParameter()
             >>> X = numpy.linspace(-1, 1, 100)
             >>> Y = [u.evalPDF(x) for x in X]
 
@@ -190,43 +116,135 @@ class UncertainParameter(object):
 ## Private Methods
 ###############################################################################
 
+    def _getSample(self):
+        if self._max_pdf_val is None:
+            self._max_pdf_val = self._getMaxPDFVal(self.evalPDF,
+                    self.lower_bound, self.upper_bound)
+        while True:
+            zscale = self._max_pdf_val*1.1
+            uval = (self.lower_bound +
+                np.random.random()*(self.upper_bound-self.lower_bound))
+            zval = zscale*np.random.random()
+            if zval < self.evalPDF(uval):
+                return uval
+
+    def _getMaxPDFVal(self, evalPDF, lower_bound, upper_bound):
+        max_pdf_val = 0
+        for ui in np.linspace(lower_bound, upper_bound, 20):
+            pdfi = evalPDF(ui)
+            if pdfi > max_pdf_val:
+                max_pdf_val = pdfi
+        return max_pdf_val
+
     def _evalPDF(self, u):
         if u < self.lower_bound or u > self.upper_bound:
             return 0
-
-        if self.distribution == 'custom':
+        else:
             return self.pdf(u)
 
-        elif self.distribution == 'uniform':
-            return 1./(self.upper_bound - self.lower_bound)
-
-        elif self.distribution == 'gaussian':
-            truncconst = (_normCDF((self.upper_bound - self.mean)/
-                                   self.standard_deviation) -
-                          _normCDF((self.lower_bound - self.mean)/
-                                   self.standard_deviation))
-            return (1./truncconst)*_normPDF((u -
-                self.mean)/self.standard_deviation)
-
-        elif self.distribution == 'interval':
-#            warnings.warn('Interval uncertainties have no PDF, using uniform
-#                    distribution to sample')
-            return 1./(self.upper_bound - self.lower_bound)
-
 ###############################################################################
-## Private Functions
+## Child classes for specific distributions
+## They should override the __init__, _getSample and _evalPDF methods
 ###############################################################################
 
-def _normCDF(x):
-    return (1. + math.erf(x / math.sqrt(2.)))/2.
+class UniformParameter(UncertainParameter):
+    '''Class for creating uniform uncertain parameters for use with
+    horsetail matching.
 
-def _normPDF(x):
-    return (1./math.sqrt(2.*math.pi))*math.exp(-0.5*x**2)
+    :param double lower_bound: lower bound of the distribution [default -1]
 
-def _getMaxPDFVal(evalPDF, lower_bound, upper_bound):
-    max_pdf_val = 0
-    for ui in np.linspace(lower_bound, upper_bound, 20):
-        pdfi = evalPDF(ui)
-        if pdfi > max_pdf_val:
-            max_pdf_val = pdfi
-    return max_pdf_val
+    :param double upper_bound: upper bound of the distribution [default 1]
+
+    *Example Declaration* ::
+
+        >>> u = UniformParameter()
+        >>> u = UniformParameter(lower_bound=-2, upper_bound=2)
+
+    '''
+
+    default_lb = -1
+    default_ub = 1
+
+    def __init__(self, lower_bound=default_lb, upper_bound=default_ub):
+
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.is_interval_uncertainty = False
+
+    def _getSample(self):
+        return random.uniform(self.lower_bound, self.upper_bound)
+
+    def _evalPDF(self, u):
+        if u < self.lower_bound or u > self.upper_bound:
+            return 0
+        else:
+            return 1./(self.upper_bound - self.lower_bound)
+
+class IntervalParameter(UniformParameter):
+    '''Class for creating interval uncertain parameters for use with
+    horsetail matching.
+
+    :param double lower_bound: lower bound of the interval [default -1]
+
+    :param double upper_bound: upper bound of the interval [default 1]
+
+    *Example Declaration* ::
+
+        >>> u = IntervalParameter()
+        >>> u = IntervalParameter(lower_bound=-2, upper_bound=2)
+
+    '''
+
+    default_lb = -1
+    default_ub = 1
+
+    def __init__(self, lower_bound=default_lb, upper_bound=default_ub):
+
+        super(IntervalParameter, self).__init__(lower_bound, upper_bound)
+        self.is_interval_uncertainty = True
+        self._returned_limits = []
+
+    def _getSample(self):
+
+        if len(self._returned_limits) < 1:
+            self._returned_limits.append(self.lower_bound)
+            return self.lower_bound
+        elif len(self._returned_limits) < 2:
+            self._returned_limits.append(self.upper_bound)
+            return self.upper_bound
+        else:
+            return random.uniform(self.lower_bound, self.upper_bound)
+
+class GaussianParameter(UncertainParameter):
+    '''Class for creating gaussian uncertain parameters for use with
+    horsetail matching.
+
+    :param double mean: mean value of the distribution. [default 0]
+
+    :param double standard_deviation: standard deviation of the distribution.
+        [default 1]
+
+    *Example Declaration* ::
+
+        >>> u = GaussianParameter()
+        >>> u = GaussianParameter(mean=1, standard_deviation=2)
+
+    '''
+
+    default_mean = 0
+    default_std = 1
+
+    def __init__(self, mean=default_mean, standard_deviation=default_std):
+
+        self.mean = mean
+        self.standard_deviation = standard_deviation
+        self.is_interval_uncertainty = False
+
+    def _getSample(self):
+        return random.gauss(self.mean, self.standard_deviation)
+
+    def _evalPDF(self, u):
+        return self._normPDF((u - self.mean)/self.standard_deviation)
+
+    def _normPDF(self, x):
+        return (1./math.sqrt(2.*math.pi))*math.exp(-0.5*x**2)

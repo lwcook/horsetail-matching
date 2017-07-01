@@ -7,7 +7,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
     '../horsetailmatching/')))
 
 from surrogates import PolySurrogate
-from parameters import UncertainParameter
+from parameters import UncertainParameter, UniformParameter
+from parameters import GaussianParameter, IntervalParameter
 from hm import HorsetailMatching
 from demoproblems import TP0, TP1, TP2, TP3
 
@@ -19,7 +20,7 @@ class TestSurrogate(unittest.TestCase):
         def fqoi(x, u):
             return TP1([x, 0], [u, 0])
 
-        uparam = UncertainParameter('uniform')
+        uparam = UniformParameter()
 
         poly1 = PolySurrogate(dimensions=1, order=0, poly_type='hermite')
         theHM = HorsetailMatching(fqoi, uparam, samples_prob=10,
@@ -44,7 +45,7 @@ class TestSurrogate(unittest.TestCase):
         def fqoi(x, u):
             return TP1(x, u, jac=False)
 
-        uparams = [UncertainParameter('uniform'), UncertainParameter('uniform')]
+        uparams = [UniformParameter(), UniformParameter()]
         poly = PolySurrogate(dimensions=2, order=3)
 
         theHM = HorsetailMatching(fqoi, uparams, samples_prob=10)
@@ -92,9 +93,9 @@ class TestSurrogate(unittest.TestCase):
 
         def ftarget_l(h): return -1 - h**5
 
-        u_1 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
-        u_2 = UncertainParameter('gaussian', mean=0, standard_deviation=1)
-        u_3 = UncertainParameter('interval', lower_bound=-1, upper_bound=1)
+        u_1 = UniformParameter(lower_bound=-1, upper_bound=1)
+        u_2 = GaussianParameter(mean=0, standard_deviation=1)
+        u_3 = IntervalParameter(lower_bound=-1, upper_bound=1)
 
         qPolyChaos = PolySurrogate(dimensions=3, order=2,
                         poly_type=['legendre', 'hermite', 'legendre'])
