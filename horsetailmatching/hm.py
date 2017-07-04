@@ -105,8 +105,8 @@ class HorsetailMatching(object):
         >>> def myTarg1(h): return 1-h**3
         >>> def myTarg2(h): return 2-h**3
 
-        >>> u1 = UncertainParameter('uniform')
-        >>> u2 = UncertainParameter('interval')
+        >>> u1 = UniformParameter()
+        >>> u2 = IntervalParameter()
         >>> U = [u1, u2]
         >>> poly = PolySurrogate(dimensions=2)
         >>> poly_points = poly.getQuadraturePoints()
@@ -257,7 +257,7 @@ class HorsetailMatching(object):
         *Example Usage*::
 
             >>> def myFunc(x, u): return x[0]*x[1] + u
-            >>> u = UncertainParameter('uniform')
+            >>> u1 = UniformParameter()
             >>> theHM = HorsetailMatching(myFunc, u)
             >>> x0 = [1, 2]
             >>> theHM.evalMetric(x0)
@@ -314,7 +314,7 @@ class HorsetailMatching(object):
         *Example Usage*::
 
             >>> def myFunc(x, u): return x[0]*x[1] + u
-            >>> u = UncertainParameter('uniform')
+            >>> u = UniformParameter()
             >>> theHM = HorsetailMatching(myFunc, u)
             >>> (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
             >>> matplotlib.pyplot(x1, y1, 'b')
