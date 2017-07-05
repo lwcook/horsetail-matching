@@ -325,20 +325,26 @@ class HorsetailMatching(object):
 
         '''
 
-        ql, qu, hl, hu = self._ql, self._qu, self._hl, self._hu
-        qh, hh = self._qh, self._hh
+        if hasattr(self, '_ql'):
 
-        if self.integration_points is not None:
-            ql, hl = _appendPlotArrays(ql, hl, self.integration_points)
-            qu, hu = _appendPlotArrays(qu, hu, self.integration_points)
+            ql, qu, hl, hu = self._ql, self._qu, self._hl, self._hu
+            qh, hh = self._qh, self._hh
 
-        CDFs = []
-        for qi, hi in zip(qh, hh):
-            CDFs.append((qi, hi))
+            if self.integration_points is not None:
+                ql, hl = _appendPlotArrays(ql, hl, self.integration_points)
+                qu, hu = _appendPlotArrays(qu, hu, self.integration_points)
 
-        upper_curve = (qu, hu)
-        lower_curve = (ql, hl)
-        return upper_curve, lower_curve, CDFs
+            CDFs = []
+            for qi, hi in zip(qh, hh):
+                CDFs.append((qi, hi))
+
+            upper_curve = (qu, hu)
+            lower_curve = (ql, hl)
+            return upper_curve, lower_curve, CDFs
+
+        else:
+            raise ValueError('''The metric has not been evaluated at any
+                    design point so the horsetail does not exist''')
 
 ##############################################################################
 ##  Private methods  ##

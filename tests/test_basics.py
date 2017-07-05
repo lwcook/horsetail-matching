@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import pdb
+import copy
 
 import numpy as np
 
@@ -18,13 +19,48 @@ class TestInitializations(unittest.TestCase):
 
     def testDemoProblems(self):
 
-        ans = TP0([0, 1], [0, 1])
-        ans = TP1([0, 1], [0, 1])
-        ans = TP1([0, 1], [0, 1], jac=True)
-        ans = TP2([0, 1], [0, 1])
-        ans = TP2([0, 1], [0, 1], jac=True)
+        def findiff(f, x0):
+            f0 = f(x0)
+            eps = 1e-7
+            try:
+                iter(x0)
+                g = []
+                for ix, xi in enumerate(x0):
+                    x = copy.copy(x0)
+                    x[ix] += eps
+                    fnew = f(x)
+                    g.append(float(fnew - f0)/eps)
+            except TypeError:
+                g = float((f(x0 + eps) - f0)/eps)
+            return g
+
+        x0 = [1, 1]
+        u0 = [0.5, 0.5]
+
+        ans = TP0(x0, u0)
+        ans = TP1(x0, u0)
+        ans = TP2(x0, u0)
         ans = TP3(1, 1)
-        ans = TP3(1, 1, jac=True)
+
+        q, grad = TP1(x0, u0, jac=True)
+        f = lambda x: TP1(x, u0)
+        gfd = findiff(f, x0)
+        error1 = np.linalg.norm(np.array(grad) - np.array(gfd))
+
+        q, grad = TP2(x0, u0, jac=True)
+        f = lambda x: TP2(x, u0)
+        gfd = findiff(f, x0)
+        error2 = np.linalg.norm(np.array(grad) - np.array(gfd))
+
+        q, grad = TP3(1, 1, jac=True)
+        f = lambda x: TP3(x, 1)
+        gfd = findiff(f, 1)
+        error3 = np.linalg.norm(np.array(grad) - np.array(gfd))
+
+        self.assertAlmostEqual(error1, 0., places=5)
+        self.assertAlmostEqual(error2, 0., places=5)
+        self.assertAlmostEqual(error3, 0., places=5)
+
 
     def testUncertainParameter(self):
 
@@ -78,6 +114,9 @@ class TestInitializations(unittest.TestCase):
     def testHM(self):
 
         theHM = HorsetailMatching(TP0, UniformParameter())
+        with self.assertRaises(ValueError):
+            theHM.getHorsetail()
+
         theHM.evalMetric([0, 1])
         theHM = HorsetailMatching(TP0, IntervalParameter())
         theHM.evalMetric([0, 1])
