@@ -16,6 +16,6 @@ Alternatively, download the source files and install using python directly: firs
 1) Cloning this repository
 2) Downloading the repository as a .zip file
 3) Downloading as a .tar.gz file from https://pypi.python.org/pypi/horsetailmatching
-4) Downloading as a .tar.gz file from https://github.com/lwcook/horsetail-matching/archive/1.0.tar.gz
+4) Downloading as a .tar.gz file from https://github.com/lwcook/horsetail-matching/archive/1.1.tar.gz
 
-Then, move to where you installed it, and from the root directory (i.e. PATH/TO/INSTALL/horsetail-matching-1.0/), install using python by typing "python setup.py install". Please ensure you have the appropriate permissions, in linux you may need to type "sudo python setup.py install".
+Then, move to where you installed it, and from the root directory (i.e. PATH/TO/INSTALL/horsetail-matching-1.1/), install using python by typing "python setup.py install". Please ensure you have the appropriate permissions, in linux you may need to type "sudo python setup.py install".
