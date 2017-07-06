@@ -2,12 +2,13 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
 from horsetailmatching import UncertainParameter, HorsetailMatching
+from horsetailmatching import UniformParameter, IntervalParameter
 from horsetailmatching.demoproblems import TP2
 
 def main():
 
-    u1 = UncertainParameter('interval', lower_bound=-1, upper_bound=1)
-    u2 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
+    u1 = IntervalParameter(lower_bound=-1, upper_bound=1)
+    u2 = UniformParameter(lower_bound=-1, upper_bound=1)
 
     def my_target(h):
         return 1

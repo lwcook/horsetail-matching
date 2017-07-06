@@ -1,6 +1,7 @@
 import numpy as np
 
-from horsetailmatching import HorsetailMatching, UncertainParameter
+from horsetailmatching import HorsetailMatching, IntervalParameter
+from horsetailmatching import UniformParameter, GaussianParameter
 from horsetailmatching.demoproblems import TP2
 from horsetailmatching.surrogates import PolySurrogate
 
@@ -10,7 +11,7 @@ from equadratures import Polyreg
 
 def main():
 
-    uparams = [UncertainParameter('uniform'), UncertainParameter('interval')]
+    uparams = [UniformParameter(), IntervalParameter()]
     theHM = HorsetailMatching(TP2, uparams)
     print('Metric evaluated with direct sampling: ', theHM.evalMetric([0, 1]))
 

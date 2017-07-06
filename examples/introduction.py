@@ -1,13 +1,14 @@
 from scipy.optimize import minimize
 
 import matplotlib.pyplot as plt
-from horsetailmatching import UncertainParameter, HorsetailMatching
+from horsetailmatching import UncertainParameter, UniformParameter
+from horsetailmatching import GaussianParameter, HorsetailMatching
 from horsetailmatching.demoproblems import TP1
 
 def main():
 
-    u1 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
-    u2 = UncertainParameter('gaussian', mean=0, standard_deviation=1)
+    u1 = UniformParameter(lower_bound=-1, upper_bound=1)
+    u2 = GaussianParameter(mean=0, standard_deviation=1)
 
     def my_target(h): return 0
 

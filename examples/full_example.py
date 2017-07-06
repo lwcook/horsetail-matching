@@ -2,14 +2,15 @@ import numpy as np
 import scipy.optimize as scopt
 import matplotlib.pyplot as plt
 
-from horsetailmatching import HorsetailMatching, UncertainParameter
+from horsetailmatching import HorsetailMatching, UniformParameter
+from horsetailmatching import GaussianParameter, IntervalParameter
 from horsetailmatching.demoproblems import TP2
 from horsetailmatching.surrogates import PolySurrogate
 
 def main():
 
-    u_1 = UncertainParameter('uniform', lower_bound=-1, upper_bound=1)
-    u_2 = UncertainParameter('interval', lower_bound=-1, upper_bound=1)
+    u_1 = UniformParameter(lower_bound=-1, upper_bound=1)
+    u_2 = IntervalParameter(lower_bound=-1, upper_bound=1)
 
     def fQOI(x, u):
         return TP2(x, u, jac=True)
@@ -21,12 +22,12 @@ def main():
         return -1 - h**5
 
     qPolyChaos = PolySurrogate(dimensions=2, order=3,
-            poly_type=['legendre', 'hermite', 'legendre'])
+            poly_type=['legendre', 'hermite'])
 
     gradPolyChaos = [PolySurrogate(dimensions=2, order=3,
-                        poly_type=['legendre', 'hermite', 'legendre']),
+                        poly_type=['legendre', 'hermite']),
                      PolySurrogate(dimensions=2, order=3,
-                         poly_type=['legendre', 'hermite', 'legendre'])]
+                         poly_type=['legendre', 'hermite'])]
 
     u_quad_points = qPolyChaos.getQuadraturePoints()
 
@@ -52,9 +53,8 @@ def main():
     upper, lower, CDFs = theHM.getHorsetail()
     for CDF in CDFs:
         plt.plot(CDF[0], CDF[1], 'grey', lw=0.5)
-    plt.plot(upper[0], upper[1], 'b')
+    plt.plot(upper[0], upper[1], 'b', label='initial')
     plt.plot(lower[0], lower[1], 'b')
-    plt.show()
 
     def myObj(x):
         q, grad = theHM.evalMetric(x)
@@ -70,8 +70,9 @@ def main():
     upper, lower, CDFs = theHM.getHorsetail()
     for CDF in CDFs:
         plt.plot(CDF[0], CDF[1], 'grey', lw=0.5)
-    plt.plot(upper[0], upper[1], 'b')
-    plt.plot(lower[0], lower[1], 'b')
+    plt.plot(upper[0], upper[1], 'r', label='optimal')
+    plt.plot(lower[0], lower[1], 'r')
+    plt.legend(loc='lower right')
     plt.show()
 
 if __name__ == "__main__":

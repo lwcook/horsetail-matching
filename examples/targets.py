@@ -4,6 +4,7 @@ import pdb
 from scipy.optimize import minimize
 
 from horsetailmatching import HorsetailMatching, UncertainParameter
+from horsetailmatching import UniformParameter, GaussianParameter
 from horsetailmatching.demoproblems import TP3
 
 def main():
@@ -13,7 +14,7 @@ def main():
         plt.plot(x1, y1, c=c)
         plt.plot([theHM.ftarget(y) for y in y1], y1, c=c, linestyle='dashed')
 
-    u1 = UncertainParameter('gaussian')
+    u1 = GaussianParameter()
 
     def myFunc(x, u):
         return TP3(x, u, jac=False)
