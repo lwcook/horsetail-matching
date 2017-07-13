@@ -276,7 +276,8 @@ class HorsetailMatching(object):
         if method is None:
             method = self.method
 
-        if self.verbose: print('Evaluating surrogate')
+        if self.verbose:
+            print('Evaluating surrogate')
         if self.surrogate is None:
             def fqoi(u): return self.fqoi(x, u)
             def fgrad(u): return self.jac(x, u)
@@ -554,8 +555,8 @@ class HorsetailMatching(object):
 
             u_samples = np.zeros(u_sample_dimensions)
 
-            # Sample over interval uncertainties, and then at each sampled
-            # value sample over the probabilistic uncertainties
+            # Sample over interval uncertainties,
+            # Then at each value sample over the probabilistic uncertainties
             for ii in np.arange(u_samples.shape[0]):
                 u_i = self._getOneSample(self._u_int, N_u)
 
