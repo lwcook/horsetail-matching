@@ -13,6 +13,6 @@ This package is build for python 2.7, so firstly you'll need python installed. V
 Once you have python, to install horsetail matching download this package in one of the following ways:
 1) Cloning this repository
 2) Downloading the repository as a .zip file, then extracting it
-4) Downloading as a .tar.gz file from https://github.com/lwcook/horsetail-matching/archive/1.5.1.tar.gz, then extracting it
+4) Downloading as a .tar.gz file from https://github.com/lwcook/horsetail-matching/archive/1.5.2.tar.gz, then extracting it
 
 Then, move to where you extracted the package, and from the root directory (i.e. PATH/TO/EXTRACT/horsetail-matching-1.5/), install using python by typing "python setup.py install". Please ensure you have the appropriate permissions (e.g. in linux you may need to type "sudo python setup.py install".)

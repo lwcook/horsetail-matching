@@ -216,6 +216,7 @@ def _define_poly_J(typestr, order, a=1, b=1):
 
     n = order
     # Define ab, the matrix of alpha and beta values
+    # These are recurrence coefficients
     if typestr == 'legendre' or typestr == 'uniform':
         l, r = -1, 1
         o = l + (r-l)/2.0
