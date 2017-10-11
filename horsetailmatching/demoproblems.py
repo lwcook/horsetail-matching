@@ -33,6 +33,23 @@ def TP2(dv, u, jac=False):
         dqdx2 = (1./8.)*( 2*z/10. - u[1]**2) + 0.1*u[1]**3
         return q, [dqdx1, dqdx2]
 
+def TP2b(dv, u, jac=False):
+    '''Demo problem 2 for horsetail matching, takes two input vectors of size 2
+    and returns just the qoi if jac is False or the qoi and its gradient if jac
+    is True'''
+    y = dv[0]/2.
+    z = dv[1]/2. + 12
+
+    q = 0.25*((y**2 + z**2)/10 + 5*u[0]*u[1] - z*u[1]**2) +\
+            0.2*z*u[1]**3 + 7 + u[0]*(y + z)*0.02
+
+    if not jac:
+        return q
+    else:
+        dqdx1 = (1./8.)*( 2*y/10.) + 0.01*u[0]
+        dqdx2 = (1./8.)*( 2*z/10. - u[1]**2) + 0.1*u[1]**3 + 0.01*u[0]
+        return q, [dqdx1, dqdx2]
+
 def TP3(x, u, jac=False):
     '''Demo problem 1 for horsetail matching, takes two input values of
     size 1'''

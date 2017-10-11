@@ -293,10 +293,11 @@ class HorsetailMatching(object):
 
         if self.verbose: print('Evaluating metric')
         if method.lower() == 'empirical':
-            if self.jac:
-                raise TypeError( 'Empicial method does not support gradients')
-            else:
-                return self._evalMetricEmpirical(q_samples)
+#            if self.jac:
+#                raise TypeError( 'Empicial method does not support gradients')
+#            else:
+#                return self._evalMetricEmpirical(q_samples)
+            return self._evalMetricEmpirical(q_samples, grad_samples)
         elif method.lower() == 'kernel':
             return self._evalMetricKernel(q_samples, grad_samples)
         else:
@@ -351,32 +352,71 @@ class HorsetailMatching(object):
 ##  Private methods  ##
 ##############################################################################
 
-    def _evalMetricEmpirical(self, q_samples):
+    def _evalMetricEmpirical(self, q_samples, grad_samples=None):
 
-        h_htail = np.zeros(q_samples.shape)
-        q_htail = np.zeros(q_samples.shape)
-        for ii in np.arange(q_samples.shape[0]):
+        M_prob = self.samples_prob
+        M_int = self.samples_int
+
+        h_htail = np.zeros([M_int, M_prob])
+        q_htail = np.zeros([M_int, M_prob])
+        q_l = np.zeros(M_prob)
+        q_u = np.zeros(M_prob)
+        if grad_samples is not None:
+            g_htail = np.zeros([M_int, M_prob, self._N_dv])
+            g_l = np.zeros([M_prob, self._N_dv])
+            g_u = np.zeros([M_prob, self._N_dv])
+            Du_grad = np.zeros(self._N_dv)
+            Dl_grad = np.zeros(self._N_dv)
+
+        for ii in np.arange(M_int):
             # Get empirical CDF by sorting samples at each value of intervals
-            q_htail[ii, :] = np.sort(q_samples[ii, :])
+            sortinds = np.argsort(q_samples[ii, :])
+#            q_htail[ii, :] = np.sort(q_samples[ii, :])
+            q_htail[ii, :] = q_samples[ii, sortinds]
             M = q_samples.shape[1]
             h_htail[ii, :] = [(1./M)*(0.5 + j) for j in range(M)]
 
-        if q_samples.shape[0] > 1:
-            q_u = q_htail.min(axis=0)
-            q_l = q_htail.max(axis=0)
-        else:
-            q_u, q_l = q_htail[0], q_htail[0]
+            if grad_samples is not None:
+                for ix in np.arange(self._N_dv):
+                    g_htail[ii, :, ix] = grad_samples[ii, sortinds, ix]
+
+        for jj in np.arange(M_prob):
+            q_u[jj] = min(q_htail[:, jj])
+            q_l[jj] = max(q_htail[:, jj])
+
+            if grad_samples is not None:
+                q_u[jj] = _extalg(q_htail[:, jj], -1*self.alpha)
+                q_l[jj] = _extalg(q_htail[:, jj], self.alpha)
+                for ix in np.arange(self._N_dv):
+                    gtemp = _extgrad(q_htail[:, jj], -1*self.alpha)
+                    g_u[jj, ix] = gtemp.dot(g_htail[:, jj, ix])
+                    gtemp = _extgrad(q_htail[:, jj], self.alpha)
+                    g_l[jj, ix] = gtemp.dot(g_htail[:, jj, ix])
+
         h_u, h_l = h_htail[0], h_htail[0]  # h is same for all ECDFs
+        t_u = [self._ftarg_u(hi) for hi in h_u]
+        t_l = [self._ftarg_l(hi) for hi in h_u]
 
-        D_u, D_l = 0., 0.
-        for (qui, hui), (qli, hli) in zip(zip(q_u, h_u), zip(q_l, h_l)):
-            D_u += (1./self.samples_prob)*(qui - self._ftarg_u(hui))**2
-            D_l += (1./self.samples_prob)*(qli - self._ftarg_l(hli))**2
-
-        dhat = np.sqrt(D_u + D_l)
         self._ql, self._qu, self._hl, self._hu = q_l, q_u, h_l, h_u
         self._qh, self._hh = q_htail, h_htail
-        return dhat
+
+        Du = (1./M_prob)*sum((q_u - t_u)**2)
+        Dl = (1./M_prob)*sum((q_l - t_l)**2)
+        dhat = np.sqrt(Du + Dl)
+
+        if grad_samples is not None:
+            for ix in np.arange(self._N_dv):
+                Du_grad[ix] = (1./M_prob)*sum(2*(q_u - t_u)*g_u[:, ix])
+                Dl_grad[ix] = (1./M_prob)*sum(2*(q_l - t_l)*g_l[:, ix])
+
+            dhat_grad = (0.5*(Du+Dl)**(-0.5)*(Du_grad + Dl_grad))
+            if self.verbose:
+                print('Gradient: ' + str([g for g in dhat_grad]))
+
+            return dhat, dhat_grad
+
+        else:
+            return dhat
 
     def _evalMetricKernel(self, q_samples, grad_samples=None):
 

@@ -13,7 +13,7 @@ from hm import HorsetailMatching
 from parameters import GaussianParameter, UniformParameter, IntervalParameter
 from parameters import UncertainParameter
 from surrogates import PolySurrogate
-from demoproblems import TP0, TP1, TP2, TP3
+from demoproblems import TP0, TP1, TP2, TP3, TP2b
 
 class TestInitializations(unittest.TestCase):
 
@@ -40,6 +40,7 @@ class TestInitializations(unittest.TestCase):
         ans = TP0(x0, u0)
         ans = TP1(x0, u0)
         ans = TP2(x0, u0)
+        ans = TP2b(x0, u0)
         ans = TP3(1, 1)
 
         q, grad = TP1(x0, u0, jac=True)
@@ -52,6 +53,11 @@ class TestInitializations(unittest.TestCase):
         gfd = findiff(f, x0)
         error2 = np.linalg.norm(np.array(grad) - np.array(gfd))
 
+        q, grad = TP2b(x0, u0, jac=True)
+        f = lambda x: TP2b(x, u0)
+        gfd = findiff(f, x0)
+        error2b = np.linalg.norm(np.array(grad) - np.array(gfd))
+
         q, grad = TP3(1, 1, jac=True)
         f = lambda x: TP3(x, 1)
         gfd = findiff(f, 1)
@@ -59,6 +65,7 @@ class TestInitializations(unittest.TestCase):
 
         self.assertAlmostEqual(error1, 0., places=5)
         self.assertAlmostEqual(error2, 0., places=5)
+        self.assertAlmostEqual(error2b, 0., places=5)
         self.assertAlmostEqual(error3, 0., places=5)
 
 
@@ -200,14 +207,16 @@ class TestInitializations(unittest.TestCase):
         theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
                 samples_int=3, verbose=True, reuse_samples=True)
 
-        theHM.evalMetric([1, 1])
+        theHM.evalMetric([1, 1], method='kernel')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
-        with self.assertRaises(TypeError):
-            theHM.evalMetric([0, 1], method='empirical')
+        theHM.evalMetric([1, 1], method='empirical')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.fqoi = fqoi
         theHM.jac = fgrad
-        theHM.evalMetric([1, 1])
+        theHM.evalMetric([1, 1], method='kernel')
+        (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+        theHM.evalMetric([1, 1], method='empirical')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.uncertain_parameters = UniformParameter()
