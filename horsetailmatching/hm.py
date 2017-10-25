@@ -398,6 +398,7 @@ class HorsetailMatching(object):
         self._ql, self._qu, self._hl, self._hu = q_l, q_u, h_l, h_u
         self._qh, self._hh = q_htail, h_htail
         self._tl, self._tu = t_l, t_u
+        self._qis = None
 
         Du = (1./M_prob)*sum((q_u - t_u)**2)
         Dl = (1./M_prob)*sum((q_l - t_l)**2)

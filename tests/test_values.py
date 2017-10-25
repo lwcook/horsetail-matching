@@ -145,8 +145,8 @@ class TestDensityMatching(unittest.TestCase):
 
         uparams = [UniformParameter()]
         theHM = DensityMatching(fqoi, uparams, ftarget=ftarg,
-                samples_prob=5000,
-                integration_points=np.linspace(-1.2, 1.2, 500))
+                samples_prob=10000,
+                integration_points=np.linspace(-1.2, 1.2, 1000))
         ans = theHM.evalMetric([0])
         self.assertAlmostEqual(ans, 0.5, places=1)
 
