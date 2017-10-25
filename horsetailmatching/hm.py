@@ -2,6 +2,7 @@ import pdb
 import time
 import math
 import copy
+import warnings
 
 import numpy as np
 
@@ -40,14 +41,14 @@ class HorsetailMatching(object):
         jac is False else default 'kernel'].
 
     :param int samples_prob: number of samples to take from the
-        probabilsitic uncertainties. [default 500]
+        probabilsitic uncertainties. [default 1000]
 
     :param int samples_int: number of samples to take from the
         interval uncertainties. Note that under mixed uncertainties, a nested
         loop is used to evaluate the metric so the total number of
         samples will be samples_prob*samples_int (at each interval uncertainty
         sample samples_prob samples are taken from the probabilistic
-        uncertainties). [default 20]
+        uncertainties). [default 50]
 
     :param list integration_points: Only for method='kernel'.
         The integration point values to use when evaluating the metric using
@@ -130,8 +131,8 @@ class HorsetailMatching(object):
 
     def __init__(self, fqoi, uncertain_parameters, ftarget=None,
             jac=False, method=None,
-            samples_prob=500, samples_int=20, integration_points=None,
-            kernel_bandwidth=None, kernel_type='gaussian', alpha=500,
+            samples_prob=1000, samples_int=50, integration_points=None,
+            kernel_bandwidth=None, kernel_type='gaussian', alpha=400,
             surrogate=None, surrogate_points=None, surrogate_jac=False,
             reuse_samples=True, verbose=False):
 
@@ -219,7 +220,7 @@ class HorsetailMatching(object):
             if (not isinstance(samples, np.ndarray) or
                     samples.shape != self._processDimensions()):
                 raise TypeError('u_samples should be a np.array of size'
-                        '(samples_prob, samples_int, num_uncertanities)')
+                        '(samples_int, samples_prob, num_uncertanities)')
         self._u_samples = samples
 
     @property
@@ -293,10 +294,6 @@ class HorsetailMatching(object):
 
         if self.verbose: print('Evaluating metric')
         if method.lower() == 'empirical':
-#            if self.jac:
-#                raise TypeError( 'Empicial method does not support gradients')
-#            else:
-#                return self._evalMetricEmpirical(q_samples)
             return self._evalMetricEmpirical(q_samples, grad_samples)
         elif method.lower() == 'kernel':
             return self._evalMetricKernel(q_samples, grad_samples)
@@ -318,7 +315,7 @@ class HorsetailMatching(object):
             >>> def myFunc(x, u): return x[0]*x[1] + u
             >>> u = UniformParameter()
             >>> theHM = HorsetailMatching(myFunc, u)
-            >>> (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
+            >>> (x1, y1, t1), (x2, y2, t2), CDFs = theHM.getHorsetail()
             >>> matplotlib.pyplot(x1, y1, 'b')
             >>> matplotlib.pyplot(x2, y2, 'b')
             >>> for (x, y) in CDFs:
@@ -332,16 +329,18 @@ class HorsetailMatching(object):
             ql, qu, hl, hu = self._ql, self._qu, self._hl, self._hu
             qh, hh = self._qh, self._hh
 
-            if self.integration_points is not None:
-                ql, hl = _appendPlotArrays(ql, hl, self.integration_points)
-                qu, hu = _appendPlotArrays(qu, hu, self.integration_points)
+            if self._qis is not None:
+                ql, hl = _appendPlotArrays(ql, hl, self._qis)
+                qu, hu = _appendPlotArrays(qu, hu, self._qis)
 
             CDFs = []
             for qi, hi in zip(qh, hh):
                 CDFs.append((qi, hi))
 
             upper_curve = (qu, hu)
+            upper_target = [self._ftarg_u(h) for h in hu]
             lower_curve = (ql, hl)
+            lower_target = [self._ftarg_l(h) for h in hl]
             return upper_curve, lower_curve, CDFs
 
         else:
@@ -371,7 +370,6 @@ class HorsetailMatching(object):
         for ii in np.arange(M_int):
             # Get empirical CDF by sorting samples at each value of intervals
             sortinds = np.argsort(q_samples[ii, :])
-#            q_htail[ii, :] = np.sort(q_samples[ii, :])
             q_htail[ii, :] = q_samples[ii, sortinds]
             M = q_samples.shape[1]
             h_htail[ii, :] = [(1./M)*(0.5 + j) for j in range(M)]
@@ -399,10 +397,14 @@ class HorsetailMatching(object):
 
         self._ql, self._qu, self._hl, self._hu = q_l, q_u, h_l, h_u
         self._qh, self._hh = q_htail, h_htail
+        self._tl, self._tu = t_l, t_u
 
         Du = (1./M_prob)*sum((q_u - t_u)**2)
         Dl = (1./M_prob)*sum((q_l - t_l)**2)
         dhat = np.sqrt(Du + Dl)
+
+        if self.verbose:
+            print('Metric: ' + str(dhat))
 
         if grad_samples is not None:
             for ix in np.arange(self._N_dv):
@@ -418,100 +420,125 @@ class HorsetailMatching(object):
         else:
             return dhat
 
-    def _evalMetricKernel(self, q_samples, grad_samples=None):
+    def _getKernelParameters(self, q_samples):
 
         # If kernel bandwidth not specified, find it using Scott's rule
         if self.kernel_bandwidth is None:
             if abs(np.max(q_samples) - np.min(q_samples)) < 1e-6:
                 bw = 1e-6
             else:
-                bw = 0.1*((4/(3.*q_samples.shape[1]))**(1/5.)
+                bw = 0.33*((4/(3.*q_samples.shape[1]))**(1/5.)
                           *np.std(q_samples[0,:]))
             self.kernel_bandwidth = bw
         else:
             bw = self.kernel_bandwidth
 
         ## Initalize arrays and prepare calculation
+        q_min = np.amin(q_samples)
+        q_max = np.amax(q_samples)
         if self.integration_points is None:
-            q_min = np.amin(q_samples)
-            q_max = np.amax(q_samples)
             q_range = q_max - q_min
-            qis = np.linspace(q_min - q_range, q_max + q_range, 100)
-            self.integration_points = qis
+            qis_full = np.linspace(q_min - q_range, q_max + q_range, 10000)
+            self.integration_points = qis_full
         else:
-            qis = self.integration_points
+            qis_full = np.array(self.integration_points)
+
+        ii_low, ii_high = 0, len(qis_full)
+        try:
+            ii_high, qi_high = next((iq, qi) for iq, qi in enumerate(qis_full) if
+                    qi > q_max + 20*bw)
+        except StopIteration:
+            warnings.warn('Sample found higher than range of integration points')
+        try:
+            iiN_low, qi_low = next((iq, qi) for iq, qi in enumerate(qis_full[::-1]) if
+                    qi < q_min - 20*bw)
+            ii_low = len(qis_full) - (iiN_low+1)
+        except StopIteration:
+            warnings.warn('Sample found lower than range of integration points')
+
+        qis = qis_full[ii_low:ii_high+1] # Only evaluate over range of samples
+        self._qis = qis
+
+        return qis, bw
+
+
+    def _evalMetricKernel(self, q_samples, grad_samples=None):
+
+        qis, bw = self._getKernelParameters(q_samples)
+
         N_quad = len(qis)
         M_prob = self.samples_prob
         M_int = self.samples_int
 
-        fhtail = np.zeros([M_int, N_quad])
-        qhtail = np.zeros([M_int, N_quad])
-        hu, hl = np.zeros(N_quad), np.zeros(N_quad)
-
+        fhtail = np.zeros([N_quad, M_int])
+        qhtail = np.zeros([N_quad, M_int])
         if grad_samples is not None:
-            fht_grad = np.zeros([M_int, N_quad, self._N_dv])
-            fl_prime = np.zeros([N_quad, M_int])
-            fu_prime = np.zeros([N_quad, M_int])
-            hl_grad = np.zeros([N_quad, self._N_dv])
+            fht_grad = np.zeros([N_quad, M_int, self._N_dv])
             hu_grad = np.zeros([N_quad, self._N_dv])
+            hl_grad = np.zeros([N_quad, self._N_dv])
             Du_grad = np.zeros(self._N_dv)
             Dl_grad = np.zeros(self._N_dv)
 
+
         # ALGORITHM 1 from publication
         # Evaluate all individual CDFs and their gradients
-        for ii in np.arange(M_int):
-            qjs = q_samples[ii, :]
+        for mm in np.arange(M_int):
+            qjs = q_samples[mm, :]
             rmat = qis.reshape([N_quad, 1])-qjs.reshape([1, M_prob])
 
             if grad_samples is not None:
                 Kcdf, Kprime = _kernel(rmat, M_prob, bw=bw,
                         ktype=self.kernel_type, bGrad=True)
                 for ix in np.arange(self._N_dv):
-                    grad_js = grad_samples[ii, :, ix]
-                    fht_grad[ii, :, ix] = Kprime.dot(-1*grad_js)
+                    grad_js = grad_samples[mm, :, ix]
+                    fht_grad[:, mm, ix] = Kprime.dot(-1*grad_js)
             else:
                 Kcdf = _kernel(rmat, M_prob, bw=bw, ktype=self.kernel_type,
                         bGrad=False)
 
-            fhtail[ii, :] = Kcdf.dot(np.ones([M_prob, 1])).flatten()
-            qhtail[ii, :] = qis
+            fhtail[:, mm] = Kcdf.dot(np.ones([M_prob, 1])).flatten()
+            qhtail[:, mm] = qis
+
 
         # ALGORITHM 2 from publication
         # Find horsetail curves - envelope of the CDFs and their gradients
-        for iq in np.arange(N_quad):
+        # In Matrix form
+        if grad_samples is None:
+            hu = np.max(fhtail, axis=1).flatten()
+            hl = np.min(fhtail, axis=1).flatten()
+        else:
+            hu = _extalg(fhtail, self.alpha, axis=1).flatten()
+            hl = _extalg(fhtail, -1*self.alpha, axis=1).flatten()
 
-            hu[iq] = _extalg(fhtail[:, iq], self.alpha)
-            hl[iq] = _extalg(fhtail[:, iq], -1*self.alpha)
-
-            if grad_samples is not None:
-                fu_prime[iq, :] = _extgrad(fhtail[:, iq], self.alpha)
-                fl_prime[iq, :] = _extgrad(fhtail[:, iq], -1*self.alpha)
-                for ix in np.arange(self._N_dv):
-                    his_grad = fht_grad[:, iq, ix]
-                    hu_grad[iq, ix] = fu_prime[iq, :].dot(his_grad)
-                    hl_grad[iq, ix] = fl_prime[iq, :].dot(his_grad)
+            Su_prime = _extgrad(fhtail, self.alpha, axis=1)
+            Sl_prime = _extgrad(fhtail, -1*self.alpha, axis=1)
+            for kx in np.arange(self._N_dv):
+                fis_grad = fht_grad[:, :, kx]
+                for ii in np.arange(N_quad):
+                    hu_grad[ii, kx] = Su_prime[ii, :].dot(fis_grad[ii, :])
+                    hl_grad[ii, kx] = Sl_prime[ii, :].dot(fis_grad[ii, :])
 
         # ALGORITHM 3 from publication
         # Evaluate overall metric and gradient using matrix multipliation
         tu = np.array([self._ftarg_u(hi) for hi in hu])
         tl = np.array([self._ftarg_l(hi) for hi in hl])
-
         Du = _matrix_integration(qis, hu, tu)
         Dl = _matrix_integration(qis, hl, tl)
         dhat = float(np.sqrt(Du + Dl))
 
         self._ql, self._qu, self._hl, self._hu = qis, qis, hl, hu
         self._qh, self._hh = qhtail, fhtail
-        self._Dl, self._Du = Dl, Du
+        self._tl, self._tu = tl, tu
+
         if self.verbose:
             print('Metric: ' + str(dhat))
 
         if grad_samples is not None:
             tu_pr = np.array([_finDiff(self._ftarg_u, hi) for hi in hu])
             tl_pr = np.array([_finDiff(self._ftarg_l, hi) for hi in hl])
-            for ix in np.arange(self._N_dv):
-                Du_grad[ix] = _matrix_grad(qis, hu, hu_grad[:, ix], tu, tu_pr)
-                Dl_grad[ix] = _matrix_grad(qis, hl, hl_grad[:, ix], tl, tl_pr)
+            for kx in np.arange(self._N_dv):
+                Du_grad[kx] = _matrix_grad(qis, hu, hu_grad[:, kx], tu, tu_pr)
+                Dl_grad[kx] = _matrix_grad(qis, hl, hl_grad[:, kx], tl, tl_pr)
 
             dhat_grad = (0.5*(Du+Dl)**(-0.5)*(Du_grad + Dl_grad))
             if self.verbose:
@@ -543,7 +570,8 @@ class HorsetailMatching(object):
 
             surr_qoi = self.surrogate(u_sparse, q_sparse)
 
-            def fqoi(u): return surr_qoi(u)
+            def fqoi(u):
+                return surr_qoi(u)
             fgrad = False
             surr_jac = False
 
@@ -571,13 +599,18 @@ class HorsetailMatching(object):
                     surr_qoi  = self.surrogate(u_sparse, q_sparse)
                     surr_grad = self.surrogate_jac(u_sparse, g_sparse)
 
-            def fqoi(u): return(surr_qoi(u))
-            def fgrad(u): return(surr_grad(u))
+            def fqoi(u):
+                return(surr_qoi(u))
+            def fgrad(u):
+                return(surr_grad(u))
             surr_jac = fgrad
 
         return fqoi, fgrad, surr_jac
 
-    def _getParameterSamples(self, u_sample_dimensions):
+    def _getParameterSamples(self, u_sample_dimensions=None):
+
+        if u_sample_dimensions is None:
+            u_sample_dimensions = self._processDimensions()
 
         get_new = True
         if self.reuse_samples and self.u_samples is not None:
@@ -643,6 +676,8 @@ class HorsetailMatching(object):
                         q_samples[ii, jj] = fqoi(u_samples[ii, jj])
                         grad_samples[ii, jj, :] = fgrad(u_samples[ii, jj])
 
+        self.q_samples = q_samples
+
         return q_samples, grad_samples
 
     def _processDimensions(self):
@@ -670,15 +705,17 @@ class HorsetailMatching(object):
 ##  Private functions
 ##############################################################################
 
-def _extalg(xarr, alpha=100):
+def _extalg(xarr, alpha=100, axis=None):
     '''Given an array xarr of values, smoothly return the max/min'''
-    return sum(xarr * np.exp(alpha*xarr))/sum(np.exp(alpha*xarr))
+    return (np.sum(xarr * np.exp(alpha*xarr), axis=axis, keepdims=True)/
+                np.sum(np.exp(alpha*xarr), axis=axis, keepdims=True))
 
-def _extgrad(xarr, alpha=100):
+def _extgrad(xarr, alpha=100, axis=None):
     '''Given an array xarr of values, return the gradient of the smooth min/max
     swith respect to each entry in the array'''
-    term1 = np.exp(alpha*xarr)/sum(np.exp(alpha*xarr))
-    term2 = 1 + alpha*(xarr - _extalg(xarr, alpha))
+    term1 = (np.exp(alpha*xarr)/
+                np.sum(np.exp(alpha*xarr), axis=axis, keepdims=True))
+    term2 = 1 + alpha*(xarr - _extalg(xarr, alpha, axis=axis))
 
     return term1*term2
 
@@ -701,15 +738,35 @@ def _maxsmooth(a, b, eps=0.0000):
 def _step(x):
     return 1 * (x > 0)
 
-def _kernel(points, M=None, bw=None, ktype='gauss', bGrad=False):
+def _erf(r):
+    ## Numerical implementation of the error function for matrix comptibility
 
-    # NB make evaluations matrix compatible
+    # save the sign of x
+    sign = np.sign(r)
+    x = np.absolute(r)
+
+    # constants
+    a1 =  0.254829592
+    a2 = -0.284496736
+    a3 =  1.421413741
+    a4 = -1.453152027
+    a5 =  1.061405429
+    p  =  0.3275911
+
+    # A&S formula 7.1.26
+    t = 1.0/(1.0 + p*x)
+    y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*np.exp(-x*x)
+    return sign*y # erf(-x) = -erf(x)
+
+def _kernel(points, M, bw, ktype='gauss', bGrad=False):
+
     if ktype == 'gauss' or ktype == 'gaussian':
-        KernelMat = np.zeros(points.shape)
-        for ir in np.arange(points.shape[0]):
-            for ic in np.arange(points.shape[1]):
-                KernelMat[ir, ic] = (1./M)*((1. +
-                    math.erf((points[ir, ic]/bw)/math.sqrt(2.)))/2.)
+        KernelMat = (1./M)*((1 + _erf((points/bw)/np.sqrt(2.)))/2.)
+#        KernelMat = np.zeros(points.shape)
+#        for ir in np.arange(points.shape[0]):
+#            for ic in np.arange(points.shape[1]):
+#                KernelMat[ir, ic] = (1./M)*((1. +
+#                    math.erf((points[ir, ic]/bw)/math.sqrt(2.)))/2.)
 
     elif ktype == 'uniform' or ktype == 'uni':
         KernelMat = (1./M)*_ramp(points, width=bw*np.sqrt(12))

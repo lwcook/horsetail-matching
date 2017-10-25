@@ -10,6 +10,7 @@ from surrogates import PolySurrogate
 from parameters import UncertainParameter, UniformParameter
 from parameters import GaussianParameter, IntervalParameter
 from hm import HorsetailMatching
+from densitymatching import DensityMatching
 from demoproblems import TP0, TP1, TP2, TP3
 
 
@@ -130,12 +131,26 @@ class TestSurrogate(unittest.TestCase):
                 return [gPC.predict(u) for gPC in gradPolyChaos]
             return qmodel, gradmodel
 
+        def dmtarget(q):
+            if q < 0 or q > 10: return 0
+            else: return 0.1
+        theDM = DensityMatching(fqoi, [u_1, u_2, u_3], jac=fgrad,
+                  ftarget=dmtarget, samples_prob=3,
+                  integration_points=np.linspace(-10, 50, 50),
+                  kernel_bandwidth=0.01)
+        ansTrue, gradTrue = theDM.evalMetric([0, 1])
+        theDM.surrogate = mySurrogateWithGrad
+        theDM.surrogate_jac = True
+        theDM.surrogate_points = u_quad_points
+        ans0, grad0 = theDM.evalMetric([0, 1])
+
         theHM = HorsetailMatching(fqoi, [u_1, u_2, u_3], jac=fgrad,
                   ftarget=(ftarget_u, ftarget_l),
                   samples_prob=3, samples_int=2,
-                  integration_points=np.linspace(0, 5, 10),
+                  integration_points=np.linspace(-10, 50, 50),
                   kernel_bandwidth=0.01)
         ansTrue, gradTrue = theHM.evalMetric([0, 1])
+
 
         theHM.surrogate = mySurrogateWithGrad
         theHM.surrogate_jac = True

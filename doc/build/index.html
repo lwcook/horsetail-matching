@@ -49,7 +49,7 @@
 <p>For tutorials on horsetail matching and how to use this package, please visit <a class="reference external" href="http://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching">http://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching</a></p>
 <span class="target" id="module-horsetailmatching"></span><dl class="class">
 <dt id="horsetailmatching.HorsetailMatching">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>fqoi</em>, <em>uncertain_parameters</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>method=None</em>, <em>samples_prob=500</em>, <em>samples_int=20</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>kernel_type='gaussian'</em>, <em>alpha=500</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>fqoi</em>, <em>uncertain_parameters</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>method=None</em>, <em>samples_prob=1000</em>, <em>samples_int=50</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>kernel_type='gaussian'</em>, <em>alpha=400</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for using horsetail matching within an optimization. The main
 functionality is to evaluate the horsetail matching
 metric (and optionally its gradient) that can be used with external
@@ -81,13 +81,13 @@ have the same signature as fqoi but return g. [default False]</li>
 metric, can be &#8216;empirical&#8217; or &#8216;kernel&#8217; [default &#8216;empirical&#8217; if
 jac is False else default &#8216;kernel&#8217;].</li>
 <li><strong>samples_prob</strong> (<em>int</em>) &#8211; number of samples to take from the
-probabilsitic uncertainties. [default 500]</li>
+probabilsitic uncertainties. [default 1000]</li>
 <li><strong>samples_int</strong> (<em>int</em>) &#8211; number of samples to take from the
 interval uncertainties. Note that under mixed uncertainties, a nested
 loop is used to evaluate the metric so the total number of
 samples will be samples_prob*samples_int (at each interval uncertainty
 sample samples_prob samples are taken from the probabilistic
-uncertainties). [default 20]</li>
+uncertainties). [default 50]</li>
 <li><strong>integration_points</strong> (<em>list</em>) &#8211; Only for method=&#8217;kernel&#8217;.
 The integration point values to use when evaluating the metric using
 kernels [by default 100 points spread over 3 times the range of
@@ -219,7 +219,7 @@ propagated at each sampled value of the interval uncertainties</td>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">myFunc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">u</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">u</span> <span class="o">=</span> <span class="n">UniformParameter</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">theHM</span> <span class="o">=</span> <span class="n">HorsetailMatching</span><span class="p">(</span><span class="n">myFunc</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">),</span> <span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">),</span> <span class="n">CDFs</span> <span class="o">=</span> <span class="n">theHM</span><span class="o">.</span><span class="n">getHorsetail</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">t1</span><span class="p">),</span> <span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="n">t2</span><span class="p">),</span> <span class="n">CDFs</span> <span class="o">=</span> <span class="n">theHM</span><span class="o">.</span><span class="n">getHorsetail</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">matplotlib</span><span class="o">.</span><span class="n">pyplot</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">matplotlib</span><span class="o">.</span><span class="n">pyplot</span><span class="p">(</span><span class="n">x2</span><span class="p">,</span> <span class="n">y2</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="n">CDFs</span><span class="p">:</span>
@@ -227,6 +227,114 @@ propagated at each sampled value of the interval uncertainties</td>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">matplotlib</span><span class="o">.</span><span class="n">pyplot</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="horsetailmatching.DensityMatching">
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">DensityMatching</tt><big>(</big><em>fqoi</em>, <em>uncertain_parameters</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>samples_prob=1000</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class for using density matching within an optimization. The main
+functionality is to evaluate the density matching
+metric (and optionally its gradient) that can be used with external
+optimizers.</p>
+<p>The code is written such that all arguments that can be used at the
+initialization of a DensityMatching object can also be set as
+attributes after creation to achieve exactly the same effect.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fqoi</strong> (<em>function</em>) &#8211; function that returns the quantity of interest, it
+must take two ordered arguments - the value of the design variable
+vector and the value of the uncertainty vector.</li>
+<li><strong>uncertain_parameters</strong> (<em>list</em>) &#8211; list of UncertainParameter objects
+that describe the uncertain inputs for the problem (they must have
+the getSample() method).</li>
+<li><strong>ftarget</strong> (<em>function</em>) &#8211; function that returns the value of the target
+PDF function.</li>
+<li><strong>jac</strong> (<em>bool/function</em>) &#8211; Argument that
+specifies how to evaluate the gradient of the quantity of interest.
+If False no gradients are propagated, if True the fqoi should return
+a second argument g such that g_i = dq/dx_i. If a function, it should
+have the same signature as fqoi but return g. [default False]</li>
+<li><strong>samples_prob</strong> (<em>int</em>) &#8211; number of samples to take from the
+probabilsitic uncertainties. [default 1000]</li>
+<li><strong>integration_points</strong> (<em>list</em>) &#8211; The integration point values to use when evaluating the metric using
+kernels [by default 100 points spread over 3 times the range of
+the samples of q obtained the first time the metric is evaluated]</li>
+<li><strong>kernel_bandwidth</strong> (<em>number</em>) &#8211; The bandwidth
+used in the kernel function [by default it is found the first time
+the metric is evaluated using Scott&#8217;s rule]</li>
+<li><strong>surrogate</strong> (<em>function</em>) &#8211; Surrogate that is created at every design
+point to be sampled instead of fqoi. It should be a function that
+takes two arguments - an array with values of the uncertainties at
+which to fit the surrogate of size (num_quadrature_points,
+num_uncertainties), and an array of quantity of interest values
+corresponding to these uncertainty values to which to fit the surrogate
+of size (num_quadrature_points). It should return a functio that
+predicts the qoi at an aribtrary value of the uncertainties.
+[default None]</li>
+<li><strong>surrogate_points</strong> (<em>list</em>) &#8211; Only with a surrogate. List of points at
+which fqoi is evaluated to give values to fit the surrogates to. These
+are passed to the surrogate function along with the qoi evaluated at
+these points when the surrogate is fitted [by default tensor
+quadrature of 5 points in each uncertain dimension is used]</li>
+<li><strong>surrogate_jac</strong> (<em>bool/function</em>) &#8211; Only with a surrogate.  Specifies how
+to take surrogates of the gradient. It works similarly to the
+jac argument: if False, the same surrogate is fitted to fqoi and each
+component of its gradient, if True, the surrogate function is
+expected to take a third argument - an array that is the gradient
+at each of the quadrature points of size
+(num_quadrature_points, num_design_variables). If a function, then
+instead the array of uncertainty values and the array of gradient
+values are passed to this function and it should return a function for
+the surrogate model of the gradient.</li>
+<li><strong>reuse_samples</strong> (<em>bool</em>) &#8211; If True will reuse the same set of samples of
+the uncertainties for evaluating the metric at any value of the
+design variables, if False wise will re-sample every time evalMetric
+is called [default True]</li>
+<li><strong>verbose</strong> (<em>bool</em>) &#8211; If True will print out details [default False].</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="horsetailmatching.DensityMatching.evalMetric">
+<tt class="descname">evalMetric</tt><big>(</big><em>x</em>, <em>wide=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.evalMetric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the density matching metric at given values of the
+design variables.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>iterable</em>) &#8211; values of the design variables, this is passed as
+the first argument to the function fqoi</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">metric_value - value of the metric evaluated at the design
+point given by x</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="horsetailmatching.DensityMatching.getPDF">
+<tt class="descname">getPDF</tt><big>(</big><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.getPDF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that gets vectors of the pdf and target at the last design
+evaluated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">tuple of q values, pdf values, target values</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

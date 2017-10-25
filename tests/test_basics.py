@@ -3,6 +3,7 @@ import sys
 import unittest
 import pdb
 import copy
+import warnings
 
 import numpy as np
 
@@ -10,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
     '../horsetailmatching/')))
 
 from hm import HorsetailMatching
+from densitymatching import DensityMatching
 from parameters import GaussianParameter, UniformParameter, IntervalParameter
 from parameters import UncertainParameter
 from surrogates import PolySurrogate
@@ -120,14 +122,16 @@ class TestInitializations(unittest.TestCase):
 
     def testHM(self):
 
-        theHM = HorsetailMatching(TP0, UniformParameter())
+        theHM = HorsetailMatching(TP0, GaussianParameter(),
+                integration_points=np.linspace(-1, 100, 100))
+
         with self.assertRaises(ValueError):
             theHM.getHorsetail()
 
         theHM.evalMetric([0, 1])
         theHM = HorsetailMatching(TP0, IntervalParameter())
         theHM.evalMetric([0, 1])
-        theHM = HorsetailMatching(TP0, GaussianParameter())
+        theHM = HorsetailMatching(TP0, UniformParameter())
         theHM.evalMetric([0, 1])
         theHM = HorsetailMatching(TP0, [GaussianParameter()])
         theHM.evalMetric([0, 1])
@@ -161,26 +165,26 @@ class TestInitializations(unittest.TestCase):
 
         uparams = [UniformParameter(), UniformParameter()]
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget)
-        theHM.evalMetric([0, 0], method='empirical')
+        theHM.evalMetric([1, 1], method='empirical')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM.uncertain_parameters = uparams
-        theHM.evalMetric([0, 0], method='kernel')
+        theHM.evalMetric([1, 1], method='kernel')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         uparams = [UniformParameter(), IntervalParameter()]
         theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget,
                 samples_prob=5, samples_int=3)
 
-        theHM.evalMetric([0,0], method='kernel')
+        theHM.evalMetric([1, 1], method='kernel')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         ups = [UniformParameter(), IntervalParameter(), GaussianParameter()]
         theHM.uncertain_parameters = ups
 
-        theHM.evalMetric([0,0], method='kernel')
+        theHM.evalMetric([1, 1], method='kernel')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
-        theHM.evalMetric([0,0], method='empirical')
+        theHM.evalMetric([1, 1], method='empirical')
         (x1, y1), (x2, y2), CDFs = theHM.getHorsetail()
 
         theHM = HorsetailMatching(fqoi, uparams,
@@ -200,11 +204,12 @@ class TestInitializations(unittest.TestCase):
                 samples_int = 50)
 
         theHM = HorsetailMatching(fqoi, uparams, method='kernel',
-                integration_points=np.linspace(0, 10, 100),
+                integration_points=np.linspace(-50, 50, 1000),
                 kernel_bandwidth=0.01)
 
         uparams = [UniformParameter(), IntervalParameter()]
         theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
+                integration_points=np.linspace(-50, 50, 1000),
                 samples_int=3, verbose=True, reuse_samples=True)
 
         theHM.evalMetric([1, 1], method='kernel')
@@ -243,56 +248,58 @@ class TestInitializations(unittest.TestCase):
             theHM = HorsetailMatching(fboth, uparams, jac=True, samples_prob=5,
                     samples_int=3, kernel_bandwidth=0.01, kernel_type='bad')
 
+        theHM._getParameterSamples()
 
+    def testDM(self):
 
-class TestHorsetailMatching(unittest.TestCase):
+        theDM = DensityMatching(TP0, GaussianParameter())
+        with self.assertRaises(ValueError):
+            theDM.getPDF()
 
+        theDM.evalMetric([0, 1])
+        theDM = DensityMatching(TP0, UniformParameter())
+        theDM.evalMetric([0, 1])
+        theDM = DensityMatching(TP0, [GaussianParameter()])
+        theDM.evalMetric([0, 1])
 
-    def testMetricValues(self):
+        def fqoi(x, u):
+            return TP1(x, u, jac=False)
 
-        ftarget = lambda h: 0
-        fqoi = lambda x, u: 1
+        def fgrad(x, u):
+            return TP1(x, u, jac=True)[1]
 
-        uparams = [UniformParameter()]
-        theHM = HorsetailMatching(fqoi, uparams, ftarget=ftarget,
-                method='kernel',
-                integration_points=np.linspace(0.99, 1.01, 100))
-        ans = theHM.evalMetric([0])
-        self.assertAlmostEqual(ans, np.sqrt(2), places=3)
+        def fboth(x, u):
+            return TP1(x, u, jac=True)
 
-        theHM.kernel_type = 'uniform'
-        ans = theHM.evalMetric([0])
-        self.assertAlmostEqual(ans, np.sqrt(2), places=3)
+        def ftarget(q):
+            if q < 0 or q > 5:
+                return 0
+            else:
+                return 0.2
 
-        theHM.kernel_type = 'triangle'
-        ans = theHM.evalMetric([0])
-        self.assertAlmostEqual(ans, np.sqrt(2), places=3)
+        def fzero(x, u):
+            return 0
 
-        ans = theHM.evalMetric([0], method='empirical')
-        self.assertAlmostEqual(ans, np.sqrt(2), places=3)
+        uparams = [UniformParameter(), UniformParameter()]
 
-        ftarget = lambda h: -h
-        fqoi = lambda x, u: np.linalg.norm(u)
+        theDM = DensityMatching(fzero, uparams, ftarget=ftarget, verbose=True)
+        theDM.evalMetric([1, 1])
 
-        up = [UniformParameter(), IntervalParameter()]
-        theHM = HorsetailMatching(fqoi, up, ftarget=(ftarget, ftarget),
-                samples_prob=100, samples_int=50)
-        ans = theHM.evalMetric([0])
-        self.assertTrue(abs(ans - 2.05) < 5e-2)
+        theDM = DensityMatching(fqoi, uparams, ftarget=ftarget, verbose=True)
+        theDM.evalMetric([1, 1])
+        (x1, y1, t1) = theDM.getPDF()
 
-        ftarget = lambda h: -h
-        fqoi = lambda x, u: u
-        up = UniformParameter()
-        theHM = HorsetailMatching(fqoi, up, ftarget=ftarget,
-                samples_prob=1000)
-        ans = theHM.evalMetric([0])
-        self.assertTrue(abs(ans - 1.4) < 1e-1)
+        _ = theDM.uncertain_parameters
+        with self.assertRaises(ValueError):
+            theDM.uncertain_parameters = []
 
-        up = IntervalParameter()
-        theHM.samples_int=50
-        theHM.uncertain_parameters = up
-        print(theHM.evalMetric([1]))
+        _ = theDM.ftarget
 
+        theDM.u_samples = None
+        with self.assertRaises(TypeError):
+            theDM.u_samples = np.array([0])
+        with self.assertRaises(TypeError):
+            theDM.u_samples = 1
 
 
 if __name__ == "__main__":
