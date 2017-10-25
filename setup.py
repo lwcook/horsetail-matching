@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='horsetailmatching',
-        version='1.7',
+        version='1.7.1',
         url='https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching',
         download_url='https://github.com/lwcook/horsetail-matching/archive/1.7.tar.gz',
         author='Laurence W. Cook',
