@@ -199,6 +199,28 @@ point given by x</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="horsetailmatching.HorsetailMatching.evalSamples">
+<tt class="descname">evalSamples</tt><big>(</big><em>x</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.evalSamples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evalautes the samples of quantity of interest and its gradient
+(if supplied) at the given values of the design variables</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>iterable</em>) &#8211; values of the design variables, this is passed as
+the first argument to the function fqoi</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Return vector q_samples:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">values of the quantity of interest</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Return matrix grad_samples:</th></tr>
+<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">values of the gradient</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="horsetailmatching.HorsetailMatching.getHorsetail">
 <tt class="descname">getHorsetail</tt><big>(</big><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.getHorsetail" title="Permalink to this definition">¶</a></dt>
 <dd><p>Function that gets vectors of the horsetail plot at the last design

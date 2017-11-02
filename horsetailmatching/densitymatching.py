@@ -193,7 +193,7 @@ class DensityMatching(HorsetailMatching):
 
         else:
             raise ValueError('''The metric has not been evaluated at any
-                    design point so the horsetail does not exist''')
+                    design point so the PDF cannot get obtained''')
 
 ##############################################################################
 ##  Private methods  ##

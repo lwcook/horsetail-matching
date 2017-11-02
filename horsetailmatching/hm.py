@@ -241,6 +241,42 @@ class HorsetailMatching(object):
 ##  Public Methods
 ##############################################################################
 
+    def evalSamples(self, x):
+        '''Evalautes the samples of quantity of interest and its gradient
+        (if supplied) at the given values of the design variables
+
+        :param iterable x: values of the design variables, this is passed as
+            the first argument to the function fqoi
+
+        :return vector q_samples: values of the quantity of interest
+        :return matrix grad_samples: values of the gradient
+        '''
+
+        # Make sure dimensions are correct
+        u_sample_dimensions = self._processDimensions()
+
+        self._N_dv = len(_makeIter(x))
+
+        if self.verbose:
+            print('Evaluating surrogate')
+        if self.surrogate is None:
+            def fqoi(u):
+                return self.fqoi(x, u)
+            def fgrad(u):
+                return self.jac(x, u)
+            jac = self.jac
+        else:
+            fqoi, fgrad, surr_jac = self._makeSurrogates(x)
+            jac = surr_jac
+
+        u_samples = self._getParameterSamples(u_sample_dimensions)
+
+        if self.verbose:
+            print('Evaluating quantity of interest at samples')
+        q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad, jac)
+
+        return q_samples, grad_samples
+
     def evalMetric(self, x, method=None):
         '''Evaluates the horsetail matching metric at given values of the
         design variables.
@@ -269,30 +305,14 @@ class HorsetailMatching(object):
             print('----------')
             print('At design: ' + str(x))
 
-        # Make sure dimensions are correct
-        u_sample_dimensions = self._processDimensions()
+        q_samples, grad_samples = self.evalSamples(x)
 
-        self._N_dv = len(_makeIter(x))
+        if self.verbose:
+            print('Evaluating metric')
 
         if method is None:
             method = self.method
 
-        if self.verbose:
-            print('Evaluating surrogate')
-        if self.surrogate is None:
-            def fqoi(u): return self.fqoi(x, u)
-            def fgrad(u): return self.jac(x, u)
-            jac = self.jac
-        else:
-            fqoi, fgrad, surr_jac = self._makeSurrogates(x)
-            jac = surr_jac
-
-        u_samples = self._getParameterSamples(u_sample_dimensions)
-
-        if self.verbose: print('Evaluating quantity of interest at samples')
-        q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad, jac)
-
-        if self.verbose: print('Evaluating metric')
         if method.lower() == 'empirical':
             return self._evalMetricEmpirical(q_samples, grad_samples)
         elif method.lower() == 'kernel':
