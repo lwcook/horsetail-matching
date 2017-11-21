@@ -248,8 +248,8 @@ class HorsetailMatching(object):
         :param iterable x: values of the design variables, this is passed as
             the first argument to the function fqoi
 
-        :return vector q_samples: values of the quantity of interest
-        :return matrix grad_samples: values of the gradient
+        :return: (values of the quantity of interest, values of the gradient)
+        :rtype: Tuple
         '''
 
         # Make sure dimensions are correct
