@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
 
 from hm import HorsetailMatching
 from densitymatching import DensityMatching
+from weightedsum import WeightedSum
 from parameters import GaussianParameter, UniformParameter, IntervalParameter
 from parameters import UncertainParameter
 from surrogates import PolySurrogate
@@ -289,6 +290,12 @@ class TestInitializations(unittest.TestCase):
         theDM.evalMetric([1, 1])
         (x1, y1, t1) = theDM.getPDF()
 
+        theDM = DensityMatching(fboth, uparams, jac=True, ftarget=ftarget, verbose=True)
+        theDM.evalMetric([1, 1])
+
+        theDM = DensityMatching(fqoi, uparams, jac=fgrad, ftarget=ftarget, verbose=True)
+        theDM.evalMetric([1, 1])
+
         _ = theDM.uncertain_parameters
         with self.assertRaises(ValueError):
             theDM.uncertain_parameters = []
@@ -300,6 +307,52 @@ class TestInitializations(unittest.TestCase):
             theDM.u_samples = np.array([0])
         with self.assertRaises(TypeError):
             theDM.u_samples = 1
+
+    def testWS(self):
+
+        theWS = WeightedSum(TP0, GaussianParameter())
+
+        theWS.evalMetric([0, 1])
+        theWS = WeightedSum(TP0, UniformParameter())
+        theWS.evalMetric([0, 1])
+        theWS = WeightedSum(TP0, [GaussianParameter()])
+        theWS.evalMetric([0, 1])
+
+        def fqoi(x, u):
+            return TP1(x, u, jac=False)
+
+        def fgrad(x, u):
+            return TP1(x, u, jac=True)[1]
+
+        def fboth(x, u):
+            return TP1(x, u, jac=True)
+
+        def fzero(x, u):
+            return 0
+
+        uparams = [UniformParameter(), UniformParameter()]
+
+        theWS = WeightedSum(fzero, uparams, verbose=True)
+        theWS.evalMetric([1, 1])
+
+        theWS = WeightedSum(fqoi, uparams, verbose=True)
+        theWS.evalMetric([1, 1])
+
+        theWS = WeightedSum(fboth, uparams, jac=True, verbose=True)
+        theWS.evalMetric([1, 1])
+
+        theWS = WeightedSum(fqoi, uparams, jac=fgrad, verbose=True)
+        theWS.evalMetric([1, 1])
+
+        _ = theWS.uncertain_parameters
+        with self.assertRaises(ValueError):
+            theWS.uncertain_parameters = []
+
+        theWS.u_samples = None
+        with self.assertRaises(TypeError):
+            theWS.u_samples = np.array([0])
+        with self.assertRaises(TypeError):
+            theWS.u_samples = 1
 
 
 if __name__ == "__main__":

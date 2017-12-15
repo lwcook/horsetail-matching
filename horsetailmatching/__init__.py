@@ -1,5 +1,6 @@
 from hm import HorsetailMatching
 from densitymatching import DensityMatching
+from weightedsum import WeightedSum
 from parameters import UncertainParameter, UniformParameter
 from parameters import GaussianParameter, IntervalParameter
 from surrogates import PolySurrogate

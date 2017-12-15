@@ -8,14 +8,11 @@ import numpy as np
 
 from hm import HorsetailMatching
 
-class DensityMatching(HorsetailMatching):
-    '''Class for using density matching within an optimization. The main
-    functionality is to evaluate the density matching
-    metric (and optionally its gradient) that can be used with external
-    optimizers. 
+class WeightedSum(HorsetailMatching):
+    '''Class for using weighted sum of moments within an optimization.
 
     The code is written such that all arguments that can be used at the
-    initialization of a DensityMatching object can also be set as
+    initialization of a WeightedSum object can also be set as
     attributes after creation to achieve exactly the same effect.
 
     :param function fqoi: function that returns the quantity of interest, it
@@ -26,9 +23,6 @@ class DensityMatching(HorsetailMatching):
         that describe the uncertain inputs for the problem (they must have
         the getSample() method).
 
-    :param function ftarget: function that returns the value of the target
-        PDF function.
-
     :param bool/function jac: Argument that
         specifies how to evaluate the gradient of the quantity of interest.
         If False no gradients are propagated, if True the fqoi should return
@@ -37,15 +31,6 @@ class DensityMatching(HorsetailMatching):
 
     :param int samples_prob: number of samples to take from the
         probabilsitic uncertainties. [default 1000]
-
-    :param list integration_points:
-        The integration point values to use when evaluating the metric using
-        kernels [by default 100 points spread over 3 times the range of
-        the samples of q obtained the first time the metric is evaluated]
-
-    :param number kernel_bandwidth: The bandwidth
-        used in the kernel function [by default it is found the first time
-        the metric is evaluated using Scott's rule]
 
     :param function surrogate: Surrogate that is created at every design
         point to be sampled instead of fqoi. It should be a function that
@@ -83,24 +68,23 @@ class DensityMatching(HorsetailMatching):
 
     '''
 
-    def __init__(self, fqoi, uncertain_parameters, ftarget=None, jac=False,
-            samples_prob=1000, integration_points=None, kernel_bandwidth=None,
+    def __init__(self, fqoi, uncertain_parameters, jac=False, samples_prob=1000,
             surrogate=None, surrogate_points=None, surrogate_jac=False,
-            reuse_samples=True, verbose=False):
+            reuse_samples=True, verbose=False,
+            w1=1, w2=1):
 
         self.fqoi = fqoi
         self.uncertain_parameters = uncertain_parameters
-        self.ftarget = ftarget
         self.jac = jac
         self.samples_prob = samples_prob
-        self.integration_points = integration_points
-        self.kernel_bandwidth = kernel_bandwidth
         self.reuse_samples = reuse_samples
         self.u_samples = None
         self.surrogate = surrogate
         self.surrogate_points = surrogate_points
         self.surrogate_jac = surrogate_jac
         self.verbose = verbose
+        self.w1 = w1
+        self.w2 = w2
 
 ###############################################################################
 ## Properties with non-trivial setting behaviour
@@ -138,105 +122,90 @@ class DensityMatching(HorsetailMatching):
 ##############################################################################
 ##  Public Methods
 ##############################################################################
-    def evalMetricFromSamples(self, q_samples, grad_samples=None, method=None):
-        '''Evaluates the horsetail matching metric from given samples of the quantity
-        of interest and gradient instead of evaluating them at a design.
 
-        :param np.ndarray q_samples: samples of the quantity of interest,
-            size (M_int, M_prob)
-        :param np.ndarray grad_samples: samples of the gradien,
-            size (M_int, M_prob, n_x)
+    def evalMetric(self, x, w1=None, w2=None):
+        '''Evaluates the weighted sum metric at given values of the
+        design variables.
 
-        :return: metric_value - value of the metric
+        :param iterable x: values of the design variables, this is passed as
+            the first argument to the function fqoi
+
+        :param float w1: value to weight the mean by
+
+        :param float w2: value to weight the std by
+
+        :return: metric_value - value of the metric evaluated at the design
+            point given by x
 
         :rtype: float
 
         '''
-        return self._evalDensityMetric(q_samples, grad_samples)
+        if w1 is None:
+            w1 = self.w1
+        if w2 is None:
+            w2 = self.w2
 
-    def getPDF(self):
-        '''Function that gets vectors of the pdf and target at the last design
-        evaluated.
+        if self.verbose:
+            print('----------')
+            print('At design: ' + str(x))
 
-        :return: tuple of q values, pdf values, target values
-        '''
+        # Make sure dimensions are correct
+        u_sample_dimensions = self._processDimensions()
 
-        if hasattr(self, '_qplot'):
+        self._N_dv = len(_makeIter(x))
 
-            return self._qplot, self._hplot, self._tplot
+        if self.verbose:
+            print('Evaluating surrogate')
+        if self.surrogate is None:
+            def fqoi(u):
+                return self.fqoi(x, u)
 
+            def fgrad(u):
+                return self.jac(x, u)
+            jac = self.jac
         else:
-            raise ValueError('''The metric has not been evaluated at any
-                    design point so the PDF cannot get obtained''')
+            fqoi, fgrad, surr_jac = self._makeSurrogates(x)
+            jac = surr_jac
+
+        u_samples = self._getParameterSamples(u_sample_dimensions)
+
+        if self.verbose: print('Evaluating quantity of interest at samples')
+        q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad, jac)
+
+        if self.verbose: print('Evaluating metric')
+        return self._evalWeightedSumMetric(q_samples, grad_samples)
 
 ##############################################################################
 ##  Private methods  ##
 ##############################################################################
 
-    def _evalDensityMetric(self, q_samples, grad_samples=None):
+    def _evalWeightedSumMetric(self, q_samples, grad_samples=None):
 
-        if self.integration_points is None:
-            q_min = np.amin(q_samples)
-            q_max = np.amax(q_samples)
-            q_range = q_max - q_min
-            fis = np.linspace(q_min - q_range, q_max + q_range, 1000)
-            self.integration_points = fis
-        else:
-            fis = self.integration_points
-
-        # If kernel bandwidth not specified, find it using Scott's rule
-        if self.kernel_bandwidth is None:
-            if abs(np.max(q_samples) - np.min(q_samples)) < 1e-6:
-                bw = 1e-6
-            else:
-                bw = ((4/(3.*q_samples.shape[1]))**(1/5.)
-                          *np.std(q_samples[0,:]))
-            self.kernel_bandwidth = bw
-        else:
-            bw = self.kernel_bandwidth
-
-        fjs = np.array(q_samples)
-
-        N = len(fis)
+        fjs = np.array(q_samples).flatten()
         M = self.samples_prob
 
-        t = np.array([float(self.ftarget(fi)) for fi in fis]).reshape([N, 1])
+        mean = (1./M)*np.sum(fjs)
+        var = (1./M)*np.sum([(fj - mean)**2 for fj in fjs])
 
-        # column vector - row vector to give matrix
-        delf = fis.reshape([N, 1]) - fjs.reshape([1, M])
-
-        const_term = 1.0/(M * np.sqrt(2*np.pi*bw**2))
-        K = const_term * np.exp((-1./2.) * (delf/bw)**2)
-
-        Ks = np.dot(K, np.ones([M, 1])).reshape([N, 1])
-
-        W = np.zeros([N, N])     # Trapezium rule weighting matrix
-        for i in range(N):
-            W[i, i] = (fis[min(i+1, N-1)] - fis[max(i-1, 0)])*0.5
-
-        l2norm = float((t - Ks).T.dot(W.dot((t - Ks))))
-
-        self._qplot = fis
-        self._hplot = Ks
-        self._tplot = t
-
+        ws = self.w1*mean + self.w2*np.sqrt(var)
 
         if grad_samples is None:
-            return l2norm
+            return ws
         else:
             ndv = grad_samples.shape[2]
             gradjs = grad_samples[0, :, :]
-            Kprime = const_term * np.exp((-1./2.) * (delf/bw)**2) *\
-                        delf / bw**2 * -1.
 
-            Fprime = np.zeros([M, ndv])
+            gradient = np.zeros(ndv)
             for kdv in range(ndv):
-                Fprime[:, kdv] = gradjs[:, kdv]
 
-            gradient = 2*(t - Ks).T.dot(W.dot(Kprime.dot(Fprime))).reshape(ndv)
+                meang, varg = 0., 0.
+                for j, fj in enumerate(fjs):
+                    meang += (1./M)*float(gradjs[j, kdv])
+                    varg += (1./M)*2*(fj - mean)*float(gradjs[j, kdv])
 
-            return l2norm, gradient
+                gradient[kdv] = meang + 0.5*(var**-0.5)*varg
 
+            return ws, gradient
 
     def _processDimensions(self):
 
@@ -245,6 +214,9 @@ class DensityMatching(HorsetailMatching):
         self.samples_int = 1
 
         return u_sample_dim
+
+    def getHorsetail(self):
+        return ([0], [0]), ([0], [0]), [([0], [0])]
 
 ## Private utility functions
 
@@ -256,6 +228,7 @@ class DensityMatching(HorsetailMatching):
 #    fbase = copy.copy(f0)
 #    fnew = fobj(dv + eps)
 #    return float((fnew - fbase)/eps)
+
 
 def _makeIter(x):
     try:

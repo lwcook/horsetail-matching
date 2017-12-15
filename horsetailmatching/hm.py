@@ -300,6 +300,8 @@ class HorsetailMatching(object):
             >>> theHM.evalMetric(x0)
 
         '''
+        # Make sure dimensions are correct
+        u_sample_dimensions = self._processDimensions()
 
         if self.verbose:
             print('----------')
@@ -310,6 +312,25 @@ class HorsetailMatching(object):
         if self.verbose:
             print('Evaluating metric')
 
+        return self.evalMetricFromSamples(q_samples, grad_samples, method)
+
+    def evalMetricFromSamples(self, q_samples, grad_samples=None, method=None):
+        '''Evaluates the horsetail matching metric from given samples of the quantity
+        of interest and gradient instead of evaluating them at a design.
+
+        :param np.ndarray q_samples: samples of the quantity of interest,
+            size (M_int, M_prob)
+        :param np.ndarray grad_samples: samples of the gradien,
+            size (M_int, M_prob, n_x)
+
+        :return: metric_value - value of the metric
+
+        :rtype: float
+
+        '''
+        # Make sure dimensions are correct
+        u_sample_dimensions = self._processDimensions()
+
         if method is None:
             method = self.method
 
@@ -319,6 +340,7 @@ class HorsetailMatching(object):
             return self._evalMetricKernel(q_samples, grad_samples)
         else:
             raise ValueError('Unsupported metric evalation method')
+
 
     def getHorsetail(self):
         '''Function that gets vectors of the horsetail plot at the last design
@@ -375,6 +397,10 @@ class HorsetailMatching(object):
 
         M_prob = self.samples_prob
         M_int = self.samples_int
+        if M_int > 1:
+            alpha = self.alpha
+        else:
+            alpha = 1
 
         h_htail = np.zeros([M_int, M_prob])
         q_htail = np.zeros([M_int, M_prob])
@@ -403,12 +429,12 @@ class HorsetailMatching(object):
             q_l[jj] = max(q_htail[:, jj])
 
             if grad_samples is not None:
-                q_u[jj] = _extalg(q_htail[:, jj], -1*self.alpha)
-                q_l[jj] = _extalg(q_htail[:, jj], self.alpha)
+                q_u[jj] = _extalg(q_htail[:, jj], -1*alpha)
+                q_l[jj] = _extalg(q_htail[:, jj], alpha)
                 for ix in np.arange(self._N_dv):
-                    gtemp = _extgrad(q_htail[:, jj], -1*self.alpha)
+                    gtemp = _extgrad(q_htail[:, jj], -1*alpha)
                     g_u[jj, ix] = gtemp.dot(g_htail[:, jj, ix])
-                    gtemp = _extgrad(q_htail[:, jj], self.alpha)
+                    gtemp = _extgrad(q_htail[:, jj], alpha)
                     g_l[jj, ix] = gtemp.dot(g_htail[:, jj, ix])
 
         h_u, h_l = h_htail[0], h_htail[0]  # h is same for all ECDFs
@@ -490,6 +516,10 @@ class HorsetailMatching(object):
         N_quad = len(qis)
         M_prob = self.samples_prob
         M_int = self.samples_int
+        if M_int > 1:
+            alpha = self.alpha
+        else:
+            alpha = 1
 
         fhtail = np.zeros([N_quad, M_int])
         qhtail = np.zeros([N_quad, M_int])
@@ -528,11 +558,11 @@ class HorsetailMatching(object):
             hu = np.max(fhtail, axis=1).flatten()
             hl = np.min(fhtail, axis=1).flatten()
         else:
-            hu = _extalg(fhtail, self.alpha, axis=1).flatten()
-            hl = _extalg(fhtail, -1*self.alpha, axis=1).flatten()
+            hu = _extalg(fhtail, alpha, axis=1).flatten()
+            hl = _extalg(fhtail, -1*alpha, axis=1).flatten()
 
-            Su_prime = _extgrad(fhtail, self.alpha, axis=1)
-            Sl_prime = _extgrad(fhtail, -1*self.alpha, axis=1)
+            Su_prime = _extgrad(fhtail, alpha, axis=1)
+            Sl_prime = _extgrad(fhtail, -1*alpha, axis=1)
             for kx in np.arange(self._N_dv):
                 fis_grad = fht_grad[:, :, kx]
                 for ii in np.arange(N_quad):
@@ -696,6 +726,8 @@ class HorsetailMatching(object):
                     else:
                         q_samples[ii, jj] = fqoi(u_samples[ii, jj])
                         grad_samples[ii, jj, :] = fgrad(u_samples[ii, jj])
+
+            self.grad_samples = grad_samples
 
         self.q_samples = q_samples
 
