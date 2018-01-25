@@ -30,7 +30,7 @@ class HorsetailMatching(object):
         target fuctions, one for the upper bound and one for the lower bound on
         the CDF under mixed uncertainties [default t(h) = 0]
 
-    :param bool/function jac: Only for method = 'kernel'. Argument that
+    :param bool/function jac: Argument that
         specifies how to evaluate the gradient of the quantity of interest.
         If False no gradients are propagated, if True the fqoi should return
         a second argument g such that g_i = dq/dx_i. If a function, it should
@@ -331,6 +331,18 @@ class HorsetailMatching(object):
         # Make sure dimensions are correct
         u_sample_dimensions = self._processDimensions()
 
+        q_samples = np.array(q_samples)
+        if not (q_samples.shape[0] == u_sample_dimensions[0] and
+                q_samples.shape[1] == u_sample_dimensions[1]):
+            raise ValueError('Shape of q_samples should be [M_int, M_prob]')
+
+        if grad_samples is not None:
+            grad_samples = np.array(grad_samples)
+            if not (grad_samples.shape[0] == u_sample_dimensions[0] and
+                    grad_samples.shape[1] == u_sample_dimensions[1]):
+                raise ValueError('''Shape of grad_samples
+                        should be [M_int, M_prob, n_dv]''')
+
         if method is None:
             method = self.method
 
@@ -379,10 +391,10 @@ class HorsetailMatching(object):
             for qi, hi in zip(qh, hh):
                 CDFs.append((qi, hi))
 
-            upper_curve = (qu, hu)
             upper_target = [self._ftarg_u(h) for h in hu]
-            lower_curve = (ql, hl)
+            upper_curve = (qu, hu, upper_target)
             lower_target = [self._ftarg_l(h) for h in hl]
+            lower_curve = (ql, hl, lower_target)
             return upper_curve, lower_curve, CDFs
 
         else:
@@ -397,6 +409,7 @@ class HorsetailMatching(object):
 
         M_prob = self.samples_prob
         M_int = self.samples_int
+
         if M_int > 1:
             alpha = self.alpha
         else:

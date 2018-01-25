@@ -72,7 +72,7 @@ the getSample() method).</li>
 inverse CDF given a value in [0,1]. Can be a tuple that gives two
 target fuctions, one for the upper bound and one for the lower bound on
 the CDF under mixed uncertainties [default t(h) = 0]</li>
-<li><strong>jac</strong> (<em>bool/function</em>) &#8211; Only for method = &#8216;kernel&#8217;. Argument that
+<li><strong>jac</strong> (<em>bool/function</em>) &#8211; Argument that
 specifies how to evaluate the gradient of the quantity of interest.
 If False no gradients are propagated, if True the fqoi should return
 a second argument g such that g_i = dq/dx_i. If a function, it should
@@ -199,6 +199,33 @@ point given by x</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="horsetailmatching.HorsetailMatching.evalMetricFromSamples">
+<tt class="descname">evalMetricFromSamples</tt><big>(</big><em>q_samples</em>, <em>grad_samples=None</em>, <em>method=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.evalMetricFromSamples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the horsetail matching metric from given samples of the quantity
+of interest and gradient instead of evaluating them at a design.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>q_samples</strong> (<em>np.ndarray</em>) &#8211; samples of the quantity of interest,
+size (M_int, M_prob)</li>
+<li><strong>grad_samples</strong> (<em>np.ndarray</em>) &#8211; samples of the gradien,
+size (M_int, M_prob, n_x)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">metric_value - value of the metric</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="horsetailmatching.HorsetailMatching.evalSamples">
 <tt class="descname">evalSamples</tt><big>(</big><em>x</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching.evalSamples" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evalautes the samples of quantity of interest and its gradient
@@ -210,11 +237,9 @@ point given by x</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>iterable</em>) &#8211; values of the design variables, this is passed as
 the first argument to the function fqoi</td>
 </tr>
-<tr class="field-even field"><th class="field-name" colspan="2">Return vector q_samples:</th></tr>
-<tr class="field-even field"><td>&nbsp;</td><td class="field-body">values of the quantity of interest</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">(values of the quantity of interest, values of the gradient)</td>
 </tr>
-<tr class="field-odd field"><th class="field-name" colspan="2">Return matrix grad_samples:</th></tr>
-<tr class="field-odd field"><td>&nbsp;</td><td class="field-body">values of the gradient</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Tuple</td>
 </tr>
 </tbody>
 </table>
@@ -324,21 +349,27 @@ is called [default True]</li>
 </tbody>
 </table>
 <dl class="method">
-<dt id="horsetailmatching.DensityMatching.evalMetric">
-<tt class="descname">evalMetric</tt><big>(</big><em>x</em>, <em>wide=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.evalMetric" title="Permalink to this definition">¶</a></dt>
-<dd><p>Evaluates the density matching metric at given values of the
-design variables.</p>
+<dt id="horsetailmatching.DensityMatching.evalMetricFromSamples">
+<tt class="descname">evalMetricFromSamples</tt><big>(</big><em>q_samples</em>, <em>grad_samples=None</em>, <em>method=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.evalMetricFromSamples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the horsetail matching metric from given samples of the quantity
+of interest and gradient instead of evaluating them at a design.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>iterable</em>) &#8211; values of the design variables, this is passed as
-the first argument to the function fqoi</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>q_samples</strong> (<em>np.ndarray</em>) &#8211; samples of the quantity of interest,
+size (M_int, M_prob)</li>
+<li><strong>grad_samples</strong> (<em>np.ndarray</em>) &#8211; samples of the gradien,
+size (M_int, M_prob, n_x)</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">metric_value - value of the metric evaluated at the design
-point given by x</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">metric_value - value of the metric</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+</td>
 </tr>
 </tbody>
 </table>
