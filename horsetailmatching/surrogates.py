@@ -97,25 +97,35 @@ class PolySurrogate(object):
         self.response_components = ysub
         return y
 
-    def train(self, fpoints):
+    def train(self, ftrain):
         '''Trains the polynomial expansion.
 
-        :param numpy.ndarray fpoints: output values corresponding to the
+        :param numpy.ndarray/function ftrain: output values corresponding to the
             quadrature points given by the getQuadraturePoints method to
-            which the expansion should be trained.
+            which the expansion should be trained. Or a function that should be evaluated
+            at the quadrature points to give these output values.
 
         *Sample Usage*::
 
             >>> thePC = PolySurrogate(dimensions=2)
+            >>> thePC.train(myFunc)
+            >>> predicted_q = thePC.predict([0, 1])
+
+            >>> thePC = PolySurrogate(dimensions=2)
             >>> U = thePC.getQuadraturePoints()
             >>> Q = [myFunc(u) for u in U]
-            >>> thePC.train(U, Q)
+            >>> thePC.train(Q)
             >>> predicted_q = thePC.predict([0, 1])
 
         '''
         self.coeffs = 0*self.coeffs
 
         upoints, wpoints = self.getQuadraturePointsAndWeights()
+
+        try:
+            fpoints = [ftrain(u) for u in upoints]
+        except TypeError:
+            fpoints = ftrain
 
         for ipoly in np.arange(self.N_poly):
 
