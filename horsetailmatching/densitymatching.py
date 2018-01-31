@@ -138,8 +138,30 @@ class DensityMatching(HorsetailMatching):
 ##############################################################################
 ##  Public Methods
 ##############################################################################
+    def evalMetric(self, x, method=None):
+        '''Evaluates the density matching metric at a given design point.
+
+        :param iterable x: values of the design variables, this is passed as
+            the first argument to the function fqoi
+
+        :return: metric_value - value of the metric evaluated at the design
+            point given by x
+
+        :rtype: float
+
+        *Example Usage*::
+
+            >>> def myFunc(x, u): return x[0]*x[1] + u
+            >>> u1 = UniformParameter()
+            >>> theDM = DensityMatching(myFunc, u)
+            >>> x0 = [1, 2]
+            >>> theDM.evalMetric(x0)
+
+        '''
+        return super(DensityMatching, self).evalMetric(x, method)
+
     def evalMetricFromSamples(self, q_samples, grad_samples=None, method=None):
-        '''Evaluates the horsetail matching metric from given samples of the quantity
+        '''Evaluates the density matching metric from given samples of the quantity
         of interest and gradient instead of evaluating them at a design.
 
         :param np.ndarray q_samples: samples of the quantity of interest,
