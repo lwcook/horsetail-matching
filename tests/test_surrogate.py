@@ -134,7 +134,8 @@ class TestSurrogate(unittest.TestCase):
         def dmtarget(q):
             if q < 0 or q > 10: return 0
             else: return 0.1
-        theDM = DensityMatching(fqoi, [u_1, u_2, u_3], jac=fgrad,
+
+        theDM = DensityMatching(fqoi, [u_1, u_2], jac=fgrad,
                   ftarget=dmtarget, samples_prob=3,
                   integration_points=np.linspace(-10, 50, 50),
                   kernel_bandwidth=0.01)
@@ -144,7 +145,7 @@ class TestSurrogate(unittest.TestCase):
         theDM.surrogate_points = u_quad_points
         ans0, grad0 = theDM.evalMetric([0, 1])
 
-        theHM = HorsetailMatching(fqoi, [u_1, u_2, u_3], jac=fgrad,
+        theHM = HorsetailMatching(fqoi, [u_1, u_2], u_3, jac=fgrad,
                   ftarget=(ftarget_u, ftarget_l),
                   samples_prob=3, samples_int=2,
                   integration_points=np.linspace(-10, 50, 50),

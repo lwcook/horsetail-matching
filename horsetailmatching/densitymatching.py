@@ -22,9 +22,9 @@ class DensityMatching(HorsetailMatching):
         must take two ordered arguments - the value of the design variable
         vector and the value of the uncertainty vector.
 
-    :param list uncertain_parameters: list of UncertainParameter objects
-        that describe the uncertain inputs for the problem (they must have
-        the getSample() method).
+    :param list prob_uncertainties: list of probabilistic uncertainties.
+        Is a list of UncertainParameter objects, or a list of
+        functions that return samples of the each uncertainty.
 
     :param function ftarget: function that returns the value of the target
         PDF function.
@@ -83,13 +83,14 @@ class DensityMatching(HorsetailMatching):
 
     '''
 
-    def __init__(self, fqoi, uncertain_parameters, ftarget=None, jac=False,
+    def __init__(self, fqoi, prob_uncertainties, ftarget=None, jac=False,
             samples_prob=1000, integration_points=None, kernel_bandwidth=None,
             surrogate=None, surrogate_points=None, surrogate_jac=False,
             reuse_samples=True, verbose=False):
 
         self.fqoi = fqoi
-        self.uncertain_parameters = uncertain_parameters
+        self.prob_uncertainties = prob_uncertainties
+        self.int_uncertainties = []
         self.ftarget = ftarget
         self.jac = jac
         self.samples_prob = samples_prob
@@ -102,37 +103,8 @@ class DensityMatching(HorsetailMatching):
         self.surrogate_jac = surrogate_jac
         self.verbose = verbose
 
-###############################################################################
-## Properties with non-trivial setting behaviour
-###############################################################################
-
-    @property
-    def uncertain_parameters(self):
-        return self._u_params
-
-    @uncertain_parameters.setter
-    def uncertain_parameters(self, params):
-        self._u_params = _makeIter(params)
-        if len(self._u_params) == 0:
-            raise ValueError('No uncertain parameters provided')
-
-        self._u_int = []
-        self._u_prob = []
-        for ii, u in enumerate(self._u_params):
-            self._u_prob.append((ii, u))
-
-    @property
-    def u_samples(self):
-        return self._u_samples
-
-    @u_samples.setter
-    def u_samples(self, samples):
-        if samples is not None:
-            if (not isinstance(samples, np.ndarray) or
-                    samples.shape != self._processDimensions()):
-                raise TypeError('u_samples should be a np.array of size'
-                        '(samples_int, samples_prob, num_uncertanities)')
-        self._u_samples = samples
+        # Note that this class makes heavy use of the HorsetailMatching parent 
+        # class's methods
 
 
 ##############################################################################
@@ -258,15 +230,6 @@ class DensityMatching(HorsetailMatching):
             gradient = 2*(t - Ks).T.dot(W.dot(Kprime.dot(Fprime))).reshape(ndv)
 
             return l2norm, gradient
-
-
-    def _processDimensions(self):
-
-        N_u = len(self._u_prob)
-        u_sample_dim = (1, self.samples_prob, N_u)
-        self.samples_int = 1
-
-        return u_sample_dim
 
 ## Private utility functions
 

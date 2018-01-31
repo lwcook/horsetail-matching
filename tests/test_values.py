@@ -46,14 +46,15 @@ class TestHorsetailMatching(unittest.TestCase):
         ftarget = lambda h: -h
         fqoi = lambda x, u: np.linalg.norm(u)
 
-        up = [UniformParameter(), IntervalParameter()]
-        theHM = HorsetailMatching(fqoi, up, ftarget=(ftarget, ftarget),
+        theHM = HorsetailMatching(fqoi, UniformParameter(), IntervalParameter(),
+                ftarget=(ftarget, ftarget),
                 samples_prob=100, samples_int=50)
         ans = theHM.evalMetric([0])
         self.assertTrue(abs(ans - 2.05) < 5e-2)
 
         ftarget = lambda h: -h
         fqoi = lambda x, u: u
+
         up = UniformParameter()
         theHM = HorsetailMatching(fqoi, up, ftarget=ftarget,
                 samples_prob=1000)

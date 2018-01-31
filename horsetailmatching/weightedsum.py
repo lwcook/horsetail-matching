@@ -19,9 +19,9 @@ class WeightedSum(HorsetailMatching):
         must take two ordered arguments - the value of the design variable
         vector and the value of the uncertainty vector.
 
-    :param list uncertain_parameters: list of UncertainParameter objects
-        that describe the uncertain inputs for the problem (they must have
-        the getSample() method).
+    :param list prob_uncertainties: list of probabilistic uncertainties.
+        Is a list of UncertainParameter objects, or a list of
+        functions that return samples of the each uncertainty.
 
     :param bool/function jac: Argument that
         specifies how to evaluate the gradient of the quantity of interest.
@@ -68,13 +68,14 @@ class WeightedSum(HorsetailMatching):
 
     '''
 
-    def __init__(self, fqoi, uncertain_parameters, jac=False, samples_prob=1000,
+    def __init__(self, fqoi, prob_uncertainties, jac=False, samples_prob=1000,
             surrogate=None, surrogate_points=None, surrogate_jac=False,
             reuse_samples=True, verbose=False,
             w1=1, w2=1):
 
         self.fqoi = fqoi
-        self.uncertain_parameters = uncertain_parameters
+        self.prob_uncertainties = prob_uncertainties
+        self.int_uncertainties = []
         self.jac = jac
         self.samples_prob = samples_prob
         self.reuse_samples = reuse_samples
@@ -85,38 +86,6 @@ class WeightedSum(HorsetailMatching):
         self.verbose = verbose
         self.w1 = w1
         self.w2 = w2
-
-###############################################################################
-## Properties with non-trivial setting behaviour
-###############################################################################
-
-    @property
-    def uncertain_parameters(self):
-        return self._u_params
-
-    @uncertain_parameters.setter
-    def uncertain_parameters(self, params):
-        self._u_params = _makeIter(params)
-        if len(self._u_params) == 0:
-            raise ValueError('No uncertain parameters provided')
-
-        self._u_int = []
-        self._u_prob = []
-        for ii, u in enumerate(self._u_params):
-            self._u_prob.append((ii, u))
-
-    @property
-    def u_samples(self):
-        return self._u_samples
-
-    @u_samples.setter
-    def u_samples(self, samples):
-        if samples is not None:
-            if (not isinstance(samples, np.ndarray) or
-                    samples.shape != self._processDimensions()):
-                raise TypeError('u_samples should be a np.array of size'
-                        '(samples_int, samples_prob, num_uncertanities)')
-        self._u_samples = samples
 
 
 ##############################################################################
@@ -206,14 +175,6 @@ class WeightedSum(HorsetailMatching):
                 gradient[kdv] = meang + 0.5*(var**-0.5)*varg
 
             return ws, gradient
-
-    def _processDimensions(self):
-
-        N_u = len(self._u_prob)
-        u_sample_dim = (1, self.samples_prob, N_u)
-        self.samples_int = 1
-
-        return u_sample_dim
 
     def getHorsetail(self):
         return ([0], [0]), ([0], [0]), [([0], [0])]

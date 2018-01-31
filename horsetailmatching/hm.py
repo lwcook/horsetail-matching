@@ -6,6 +6,8 @@ import warnings
 
 import numpy as np
 
+from parameters import UncertainParameter
+
 
 class HorsetailMatching(object):
     '''Class for using horsetail matching within an optimization. The main
@@ -21,9 +23,9 @@ class HorsetailMatching(object):
         must take two ordered arguments - the value of the design variable
         vector and the value of the uncertainty vector.
 
-    :param list uncertain_parameters: list of UncertainParameter objects
-        that describe the uncertain inputs for the problem (they must have
-        the getSample() method).
+    :param list prob_uncertainties: list of probabilistic uncertainties
+
+    :param list int_uncertainties: list of interval uncertainties [default []]
 
     :param function ftarget: function that returns the value of the target
         inverse CDF given a value in [0,1]. Can be a tuple that gives two
@@ -129,15 +131,17 @@ class HorsetailMatching(object):
 
     '''
 
-    def __init__(self, fqoi, uncertain_parameters, ftarget=None,
-            jac=False, method=None,
-            samples_prob=1000, samples_int=50, integration_points=None,
+    def __init__(self, fqoi, prob_uncertainties, int_uncertainties=[],
+            ftarget=None, jac=False, method=None,
+            samples_prob=100, samples_int=50, integration_points=None,
             kernel_bandwidth=None, kernel_type='gaussian', alpha=400,
             surrogate=None, surrogate_points=None, surrogate_jac=False,
             reuse_samples=True, verbose=False):
 
         self.fqoi = fqoi
-        self.uncertain_parameters = uncertain_parameters
+#        self.uncertain_parameters = uncertain_parameters
+        self.prob_uncertainties = prob_uncertainties
+        self.int_uncertainties = int_uncertainties
         self.ftarget = ftarget
         self.jac = jac
         self.method = method # Must be done after setting jac
@@ -158,22 +162,38 @@ class HorsetailMatching(object):
 ## Properties with non-trivial setting behaviour
 ###############################################################################
 
+#    @property
+#    def uncertain_parameters(self):
+#        return self._u_params
+#
+#    @uncertain_parameters.setter
+#    def uncertain_parameters(self, params):
+#        self._u_params = _makeIter(params)
+#        if len(self._u_params) == 0:
+#            raise ValueError('No uncertain parameters provided')
+#
+#        self._u_int, self._u_prob = [], []
+#        for ii, u in enumerate(self._u_params):
+#            if u.is_interval_uncertainty:
+#                self._u_int.append((ii, u))
+#            else:
+#                self._u_prob.append((ii, u))
+
     @property
-    def uncertain_parameters(self):
-        return self._u_params
+    def prob_uncertainties(self):
+        return self._prob_uncertainties
 
-    @uncertain_parameters.setter
-    def uncertain_parameters(self, params):
-        self._u_params = _makeIter(params)
-        if len(self._u_params) == 0:
-            raise ValueError('No uncertain parameters provided')
+    @prob_uncertainties.setter
+    def prob_uncertainties(self, params):
+        self._prob_uncertainties = _makeIter(params)
 
-        self._u_int, self._u_prob = [], []
-        for ii, u in enumerate(self._u_params):
-            if u.is_interval_uncertainty:
-                self._u_int.append((ii, u))
-            else:
-                self._u_prob.append((ii, u))
+    @property
+    def int_uncertainties(self):
+        return self._int_uncertainties
+
+    @int_uncertainties.setter
+    def int_uncertainties(self, params):
+        self._int_uncertainties = _makeIter(params)
 
     @property
     def method(self):
@@ -617,7 +637,7 @@ class HorsetailMatching(object):
 
         # Get quadrature points
         if self.surrogate_points is None:
-            N_u = len(self._u_prob) + len(self._u_int)
+            N_u = len(self.prob_uncertainties) + len(self.int_uncertainties)
             mesh = np.meshgrid(*[np.linspace(-1, 1, 5) for n in np.arange(N_u)],
                     copy=False)
             u_sparse = np.vstack([m.flatten() for m in mesh]).T
@@ -688,19 +708,23 @@ class HorsetailMatching(object):
         if get_new:
             if self.verbose:
                 print('Getting uncertain parameter samples')
-            N_u = len(self._u_int) + len(self._u_prob)
-
+#            N_u = len(self._u_int) + len(self._u_prob)
+            N_u  = len(self.prob_uncertainties) + len(self.int_uncertainties)
+            M_int = u_sample_dimensions[0]
+            M_prob = u_sample_dimensions[1]
             u_samples = np.zeros(u_sample_dimensions)
 
             # Sample over interval uncertainties,
             # Then at each value sample over the probabilistic uncertainties
-            for ii in np.arange(u_samples.shape[0]):
-                u_i = self._getOneSample(self._u_int, N_u)
+            for ii in np.arange(M_int):
+                u_int = [u.getSample() for u in self.int_uncertainties]
 
-                u_sub = np.zeros([u_samples.shape[1], N_u])
-                for jj in np.arange(u_samples.shape[1]):
-                    u_p = self._getOneSample(self._u_prob, N_u)
-                    u_sub[jj,:] = u_i + u_p
+                u_sub = np.zeros([M_prob, N_u])
+                for jj in np.arange(M_prob):
+                    u_sub[jj, 0:len(self.int_uncertainties)] = u_int
+
+                    u_prob = [u.getSample() for u in self.prob_uncertainties]
+                    u_sub[jj, len(self.int_uncertainties):] = u_prob
 
                 u_samples[ii,:,:] = u_sub
 
@@ -710,13 +734,6 @@ class HorsetailMatching(object):
             if self.verbose:
                 print('Re-using stored samples')
             return self.u_samples
-
-    def _getOneSample(self, u_params, N_u):
-        vu = np.zeros(N_u)
-        if len(u_params) > 0: # Return zeros if no parameters given
-            for (i, u) in u_params:
-                vu[i] = (u.getSample())
-        return vu
 
     def _evalSamples(self, u_samples, fqoi, fgrad, jac):
 
@@ -748,19 +765,19 @@ class HorsetailMatching(object):
 
     def _processDimensions(self):
 
-        N_u = len(self._u_int) + len(self._u_prob)
+        N_u = len(self.prob_uncertainties) + len(self.int_uncertainties)
 
         # Mixed uncertainties
-        if len(self._u_int) > 0 and len(self._u_prob) > 0:
+        if len(self.int_uncertainties) > 0 and len(self.prob_uncertainties) > 0:
             u_sample_dim = (self.samples_int, self.samples_prob, N_u)
 
         # Probabilistic uncertainties
-        elif len(self._u_int) == 0:
+        elif len(self.int_uncertainties) == 0:
             self.samples_int = 1
             u_sample_dim = (1, self.samples_prob, N_u)
 
         # Interval Uncertainties
-        elif len(self._u_prob) == 0:
+        elif len(self.prob_uncertainties) == 0:
             self.samples_prob = 1
             u_sample_dim = (self.samples_int, 1, N_u)
             self.kernel_bandwidth = 1e-3
