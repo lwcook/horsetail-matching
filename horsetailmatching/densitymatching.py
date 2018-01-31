@@ -94,6 +94,7 @@ class DensityMatching(HorsetailMatching):
         self.ftarget = ftarget
         self.jac = jac
         self.samples_prob = samples_prob
+        self.samples_int = 1
         self.integration_points = integration_points
         self.kernel_bandwidth = kernel_bandwidth
         self.reuse_samples = reuse_samples

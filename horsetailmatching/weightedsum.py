@@ -78,6 +78,7 @@ class WeightedSum(HorsetailMatching):
         self.int_uncertainties = []
         self.jac = jac
         self.samples_prob = samples_prob
+        self.samples_int = 1
         self.reuse_samples = reuse_samples
         self.u_samples = None
         self.surrogate = surrogate
@@ -118,9 +119,6 @@ class WeightedSum(HorsetailMatching):
             print('----------')
             print('At design: ' + str(x))
 
-        # Make sure dimensions are correct
-        u_sample_dimensions = self._processDimensions()
-
         self._N_dv = len(_makeIter(x))
 
         if self.verbose:
@@ -136,7 +134,7 @@ class WeightedSum(HorsetailMatching):
             fqoi, fgrad, surr_jac = self._makeSurrogates(x)
             jac = surr_jac
 
-        u_samples = self._getParameterSamples(u_sample_dimensions)
+        u_samples = self._getParameterSamples()
 
         if self.verbose: print('Evaluating quantity of interest at samples')
         q_samples, grad_samples = self._evalSamples(u_samples, fqoi, fgrad, jac)

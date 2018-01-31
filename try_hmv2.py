@@ -21,7 +21,9 @@ from demoproblems import TP0, TP1, TP2, TP3, TP2b
 
 def main():
 
-    theHM = HorsetailMatching(TP0, GaussianParameter(),
+    theHM = HorsetailMatching(TP0, [GaussianParameter(), GaussianParameter()],
+            [IntervalParameter(), IntervalParameter()],
+            samples_prob=5, samples_int=3,
             integration_points=np.linspace(-1, 100, 100))
 
     theHM.evalMetric([0, 1])

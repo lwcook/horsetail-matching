@@ -196,6 +196,28 @@ class HorsetailMatching(object):
         self._int_uncertainties = _makeIter(params)
 
     @property
+    def samples_prob(self):
+        return self._samples_prob
+
+    @samples_prob.setter
+    def samples_prob(self, value):
+        if len(self.prob_uncertainties) > 0:
+            self._samples_prob = value
+        else:
+            self._samples_prob = 1
+
+    @property
+    def samples_int(self):
+        return self._samples_int
+
+    @samples_int.setter
+    def samples_int(self, value):
+        if len(self.int_uncertainties) > 0:
+            self._samples_int = value
+        else:
+            self._samples_int = 1
+
+    @property
     def method(self):
         return self._method
 
@@ -237,8 +259,9 @@ class HorsetailMatching(object):
     @u_samples.setter
     def u_samples(self, samples):
         if samples is not None:
+            N_u = len(self.prob_uncertainties) + len(self.int_uncertainties)
             if (not isinstance(samples, np.ndarray) or
-                    samples.shape != self._processDimensions()):
+                    samples.shape != (self.samples_int, self.samples_prob, N_u)):
                 raise TypeError('u_samples should be a np.array of size'
                         '(samples_int, samples_prob, num_uncertanities)')
         self._u_samples = samples
@@ -273,7 +296,7 @@ class HorsetailMatching(object):
         '''
 
         # Make sure dimensions are correct
-        u_sample_dimensions = self._processDimensions()
+#        u_sample_dimensions = self._processDimensions()
 
         self._N_dv = len(_makeIter(x))
 
@@ -289,7 +312,7 @@ class HorsetailMatching(object):
             fqoi, fgrad, surr_jac = self._makeSurrogates(x)
             jac = surr_jac
 
-        u_samples = self._getParameterSamples(u_sample_dimensions)
+        u_samples = self._getParameterSamples()
 
         if self.verbose:
             print('Evaluating quantity of interest at samples')
@@ -321,7 +344,7 @@ class HorsetailMatching(object):
 
         '''
         # Make sure dimensions are correct
-        u_sample_dimensions = self._processDimensions()
+#        u_sample_dimensions = self._processDimensions()
 
         if self.verbose:
             print('----------')
@@ -349,17 +372,17 @@ class HorsetailMatching(object):
 
         '''
         # Make sure dimensions are correct
-        u_sample_dimensions = self._processDimensions()
+#        u_sample_dimensions = self._processDimensions()
 
         q_samples = np.array(q_samples)
-        if not (q_samples.shape[0] == u_sample_dimensions[0] and
-                q_samples.shape[1] == u_sample_dimensions[1]):
+        if not (q_samples.shape[0] == self.samples_int and
+                q_samples.shape[1] == self.samples_prob):
             raise ValueError('Shape of q_samples should be [M_int, M_prob]')
 
         if grad_samples is not None:
             grad_samples = np.array(grad_samples)
-            if not (grad_samples.shape[0] == u_sample_dimensions[0] and
-                    grad_samples.shape[1] == u_sample_dimensions[1]):
+            if not (grad_samples.shape[0] == self.samples_int and
+                    grad_samples.shape[1] == self.samples_prob):
                 raise ValueError('''Shape of grad_samples
                         should be [M_int, M_prob, n_dv]''')
 
@@ -504,11 +527,14 @@ class HorsetailMatching(object):
 
         # If kernel bandwidth not specified, find it using Scott's rule
         if self.kernel_bandwidth is None:
-            if abs(np.max(q_samples) - np.min(q_samples)) < 1e-6:
-                bw = 1e-6
+            if len(self.prob_uncertainties) > 0:
+                if abs(np.max(q_samples) - np.min(q_samples)) < 1e-6:
+                    bw = 1e-6
+                else:
+                    bw = 0.33*((4/(3.*q_samples.shape[1]))**(1/5.)
+                              *np.std(q_samples[0,:]))
             else:
-                bw = 0.33*((4/(3.*q_samples.shape[1]))**(1/5.)
-                          *np.std(q_samples[0,:]))
+                bw = 1e-3
             self.kernel_bandwidth = bw
         else:
             bw = self.kernel_bandwidth
@@ -691,14 +717,13 @@ class HorsetailMatching(object):
 
         return fqoi, fgrad, surr_jac
 
-    def _getParameterSamples(self, u_sample_dimensions=None):
+    def _getParameterSamples(self):
 
-        if u_sample_dimensions is None:
-            u_sample_dimensions = self._processDimensions()
+        N_u = len(self.prob_uncertainties) + len(self.int_uncertainties)
 
         get_new = True
         if self.reuse_samples and self.u_samples is not None:
-            if self.u_samples.shape != u_sample_dimensions:
+            if self.u_samples.shape != (self.samples_int, self.samples_prob, N_u):
                 if self.verbose:
                     print('''Stored samples do not match current dimensions,
                             getting new samples''')
@@ -708,25 +733,49 @@ class HorsetailMatching(object):
         if get_new:
             if self.verbose:
                 print('Getting uncertain parameter samples')
-#            N_u = len(self._u_int) + len(self._u_prob)
+
             N_u  = len(self.prob_uncertainties) + len(self.int_uncertainties)
-            M_int = u_sample_dimensions[0]
-            M_prob = u_sample_dimensions[1]
-            u_samples = np.zeros(u_sample_dimensions)
+            N_prob = len(self.prob_uncertainties)
+            N_int = len(self.int_uncertainties)
+#            u_samples = np.zeros([self.samples_int, self.samples_prob, N_u])
+
+            u_samples_prob = np.zeros([self.samples_int, self.samples_prob,
+                len(self.prob_uncertainties)])
+            u_samples_int = np.zeros([self.samples_int, self.samples_prob,
+                len(self.int_uncertainties)])
+
+            ### OLD
 
             # Sample over interval uncertainties,
             # Then at each value sample over the probabilistic uncertainties
-            for ii in np.arange(M_int):
-                u_int = [u.getSample() for u in self.int_uncertainties]
+#            for ii in np.arange(self.samples_int):
+#                u_int = [ui.getSample() for ui in self.int_uncertainties]
+#
+#                u_sub = np.zeros([self.samples_prob, N_u])
+#                for jj in np.arange(self.samples_prob):
+#                    u_sub[jj, 0:len(self.int_uncertainties)] = u_int
+#
+#                    u_prob = [u.getSample() for u in self.prob_uncertainties]
+#                    u_sub[jj, len(self.int_uncertainties):] = u_prob
+#
+#                u_samples[ii,:,:] = u_sub
 
-                u_sub = np.zeros([M_prob, N_u])
-                for jj in np.arange(M_prob):
-                    u_sub[jj, 0:len(self.int_uncertainties)] = u_int
+            ### New - broadcasting
+            u_ints = np.zeros([self.samples_int, len(self.int_uncertainties)])
+            for kk, uk in enumerate(self.int_uncertainties):
+                for ii in np.arange(self.samples_int):
+                    u_ints[ii, kk] = uk.getSample()
 
-                    u_prob = [u.getSample() for u in self.prob_uncertainties]
-                    u_sub[jj, len(self.int_uncertainties):] = u_prob
+            u_samples_int = np.tile(u_ints[:, np.newaxis], (1, self.samples_prob, 1))
 
-                u_samples[ii,:,:] = u_sub
+            u_probs = np.zeros([self.samples_prob, len(self.prob_uncertainties)])
+            for kk, uk in enumerate(self.prob_uncertainties):
+                for jj in np.arange(self.samples_prob):
+                    u_probs[jj, kk] = uk.getSample()
+
+            u_samples_prob = np.tile(u_probs[np.newaxis, :], (self.samples_int, 1, 1))
+
+            u_samples = np.concatenate((u_samples_int, u_samples_prob), axis=2)
 
             self.u_samples = u_samples
             return u_samples
@@ -762,27 +811,6 @@ class HorsetailMatching(object):
         self.q_samples = q_samples
 
         return q_samples, grad_samples
-
-    def _processDimensions(self):
-
-        N_u = len(self.prob_uncertainties) + len(self.int_uncertainties)
-
-        # Mixed uncertainties
-        if len(self.int_uncertainties) > 0 and len(self.prob_uncertainties) > 0:
-            u_sample_dim = (self.samples_int, self.samples_prob, N_u)
-
-        # Probabilistic uncertainties
-        elif len(self.int_uncertainties) == 0:
-            self.samples_int = 1
-            u_sample_dim = (1, self.samples_prob, N_u)
-
-        # Interval Uncertainties
-        elif len(self.prob_uncertainties) == 0:
-            self.samples_prob = 1
-            u_sample_dim = (self.samples_int, 1, N_u)
-            self.kernel_bandwidth = 1e-3
-
-        return u_sample_dim
 
 ##############################################################################
 ##  Private functions
@@ -936,3 +964,12 @@ def _makeIter(x):
         return [xi for xi in x]
     except:
         return [x]
+
+def _intervalSample(returned_samples, bounds):
+    if len(returned_samples) < 1:
+        return bounds[0]
+    elif len(returned_samples) < 2:
+        return bounds[1]
+    else:
+        return random.uniform(bounds[0], bounds[1])
+
