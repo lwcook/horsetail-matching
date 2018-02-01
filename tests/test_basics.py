@@ -189,6 +189,15 @@ class TestInitializations(unittest.TestCase):
         theHM = HorsetailMatching(fqoi, uparams,
                 verbose=True, reuse_samples=True)
 
+        def u_uniform():
+            return np.random.uniform(1, 3, theHM.samples_prob)
+        theHM.prob_uncertainties = [u_uniform, UniformParameter()]
+        theHM.int_uncertainties = [(1, 3), IntervalParameter()]
+        theHM.evalMetric([1,1], method='kernel')
+        (x1, y1, t1), (x2, y2, t2), CDFs = theHM.getHorsetail()
+        theHM.evalMetric([1,1], method='empirical')
+        (x1, y1, t1), (x2, y2, t2), CDFs = theHM.getHorsetail()
+
         theHM.prob_uncertainties = []
         theHM.int_uncertainties = uparams
 

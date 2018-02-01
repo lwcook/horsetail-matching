@@ -50,7 +50,7 @@ class TestHorsetailMatching(unittest.TestCase):
                 ftarget=(ftarget, ftarget),
                 samples_prob=100, samples_int=50)
         ans = theHM.evalMetric([0])
-        self.assertTrue(abs(ans - 2.05) < 5e-2)
+        self.assertTrue(abs(ans - 2.05) < 7e-2)
 
         ftarget = lambda h: -h
         fqoi = lambda x, u: u

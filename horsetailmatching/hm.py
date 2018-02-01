@@ -6,8 +6,6 @@ import warnings
 
 import numpy as np
 
-from parameters import UncertainParameter
-
 
 class HorsetailMatching(object):
     '''Class for using horsetail matching within an optimization. The main
@@ -23,9 +21,16 @@ class HorsetailMatching(object):
         must take two ordered arguments - the value of the design variable
         vector and the value of the uncertainty vector.
 
-    :param list prob_uncertainties: list of probabilistic uncertainties
+    :param list prob_uncertainties: list of probabilistic uncertainties.
+        Each can be an instance of the UncertainParameter class,
+        in which case they will be sampled using the getSample() method.
+        Alternatiely each can be a function which returns sample(s) using
+        whatever method is desired.
 
-    :param list int_uncertainties: list of interval uncertainties [default []]
+    :param list int_uncertainties: list of interval uncertainties [default []].
+        Each can be an instance of the IntervalParameter class,
+        in which case they will be sampled using the getSample() method.
+        Alternatiely each can be specified as a tuple/list of the bounds.
 
     :param function ftarget: function that returns the value of the target
         inverse CDF given a value in [0,1]. Can be a tuple that gives two
@@ -744,34 +749,36 @@ class HorsetailMatching(object):
             u_samples_int = np.zeros([self.samples_int, self.samples_prob,
                 len(self.int_uncertainties)])
 
-            ### OLD
-
-            # Sample over interval uncertainties,
-            # Then at each value sample over the probabilistic uncertainties
-#            for ii in np.arange(self.samples_int):
-#                u_int = [ui.getSample() for ui in self.int_uncertainties]
-#
-#                u_sub = np.zeros([self.samples_prob, N_u])
-#                for jj in np.arange(self.samples_prob):
-#                    u_sub[jj, 0:len(self.int_uncertainties)] = u_int
-#
-#                    u_prob = [u.getSample() for u in self.prob_uncertainties]
-#                    u_sub[jj, len(self.int_uncertainties):] = u_prob
-#
-#                u_samples[ii,:,:] = u_sub
-
-            ### New - broadcasting
             u_ints = np.zeros([self.samples_int, len(self.int_uncertainties)])
             for kk, uk in enumerate(self.int_uncertainties):
-                for ii in np.arange(self.samples_int):
-                    u_ints[ii, kk] = uk.getSample()
+                if isinstance(uk, (tuple, list)): ## See if given as tuple/list of bounds
+                    lb, ub = uk[0], uk[1]
+                    u_ints[:, kk] = np.random.uniform(lb, ub, size=self.samples_int)
+                    u_ints[0, kk] = lb
+                    u_ints[-1, kk] = ub
+                elif hasattr(uk, 'getSample'):
+                    for ii in np.arange(self.samples_int):
+                        u_ints[ii, kk] = uk.getSample()
+                else:
+                    raise TypeError('Unsupported interval uncertainty type')
 
             u_samples_int = np.tile(u_ints[:, np.newaxis], (1, self.samples_prob, 1))
 
             u_probs = np.zeros([self.samples_prob, len(self.prob_uncertainties)])
             for kk, uk in enumerate(self.prob_uncertainties):
-                for jj in np.arange(self.samples_prob):
-                    u_probs[jj, kk] = uk.getSample()
+                if callable(uk):
+                    samps = np.array(uk()).flatten()
+                    if len(samps) != self.samples_prob:
+                        raise Exception('Number of samples returned not equal ' +
+                            'to specified number of samples: please set number of ' +
+                            'samples with samples_prob attribute')
+                    else:
+                        u_probs[:, kk] = samps
+                elif hasattr(uk, 'getSample'):
+                    for jj in np.arange(self.samples_prob):
+                        u_probs[jj, kk] = uk.getSample()
+                else:
+                    raise TypeError('Unsupported probabilistic uncertainty type')
 
             u_samples_prob = np.tile(u_probs[np.newaxis, :], (self.samples_int, 1, 1))
 
@@ -971,5 +978,5 @@ def _intervalSample(returned_samples, bounds):
     elif len(returned_samples) < 2:
         return bounds[1]
     else:
-        return random.uniform(bounds[0], bounds[1])
+        return np.random.uniform(bounds[0], bounds[1])
 

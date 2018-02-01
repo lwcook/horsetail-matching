@@ -27,3 +27,5 @@ horsetailmatching/_hmold.py
 horsetailmatching/_nipcold.py
 
 /notebooks/.ipynb*
+
+try_hmv2.py
