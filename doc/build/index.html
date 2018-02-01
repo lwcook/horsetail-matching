@@ -49,7 +49,7 @@
 <p>For tutorials on horsetail matching and how to use this package, please visit <a class="reference external" href="http://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching">http://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching</a></p>
 <span class="target" id="module-horsetailmatching"></span><dl class="class">
 <dt id="horsetailmatching.HorsetailMatching">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>fqoi</em>, <em>uncertain_parameters</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>method=None</em>, <em>samples_prob=1000</em>, <em>samples_int=50</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>kernel_type='gaussian'</em>, <em>alpha=400</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">HorsetailMatching</tt><big>(</big><em>fqoi</em>, <em>prob_uncertainties</em>, <em>int_uncertainties=</em>, <span class="optional">[</span><span class="optional">]</span><em>ftarget=None</em>, <em>jac=False</em>, <em>method=None</em>, <em>samples_prob=100</em>, <em>samples_int=50</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>kernel_type='gaussian'</em>, <em>alpha=400</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.HorsetailMatching" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for using horsetail matching within an optimization. The main
 functionality is to evaluate the horsetail matching
 metric (and optionally its gradient) that can be used with external
@@ -65,9 +65,15 @@ attributes after creation to achieve exactly the same effect.</p>
 <li><strong>fqoi</strong> (<em>function</em>) &#8211; function that returns the quantity of interest, it
 must take two ordered arguments - the value of the design variable
 vector and the value of the uncertainty vector.</li>
-<li><strong>uncertain_parameters</strong> (<em>list</em>) &#8211; list of UncertainParameter objects
-that describe the uncertain inputs for the problem (they must have
-the getSample() method).</li>
+<li><strong>prob_uncertainties</strong> (<em>list</em>) &#8211; list of probabilistic uncertainties.
+Each can be an instance of the UncertainParameter class,
+in which case they will be sampled using the getSample() method.
+Alternatiely each can be a function which returns sample(s) using
+whatever method is desired.</li>
+<li><strong>int_uncertainties</strong> (<em>list</em>) &#8211; list of interval uncertainties [default []].
+Each can be an instance of the IntervalParameter class,
+in which case they will be sampled using the getSample() method.
+Alternatiely each can be specified as a tuple/list of the bounds.</li>
 <li><strong>ftarget</strong> (<em>function</em>) &#8211; function that returns the value of the target
 inverse CDF given a value in [0,1]. Can be a tuple that gives two
 target fuctions, one for the upper bound and one for the lower bound on
@@ -280,7 +286,7 @@ propagated at each sampled value of the interval uncertainties</td>
 
 <dl class="class">
 <dt id="horsetailmatching.DensityMatching">
-<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">DensityMatching</tt><big>(</big><em>fqoi</em>, <em>uncertain_parameters</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>samples_prob=1000</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">horsetailmatching.</tt><tt class="descname">DensityMatching</tt><big>(</big><em>fqoi</em>, <em>prob_uncertainties</em>, <em>ftarget=None</em>, <em>jac=False</em>, <em>samples_prob=1000</em>, <em>integration_points=None</em>, <em>kernel_bandwidth=None</em>, <em>surrogate=None</em>, <em>surrogate_points=None</em>, <em>surrogate_jac=False</em>, <em>reuse_samples=True</em>, <em>verbose=False</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching" title="Permalink to this definition">¶</a></dt>
 <dd><p>Class for using density matching within an optimization. The main
 functionality is to evaluate the density matching
 metric (and optionally its gradient) that can be used with external
@@ -296,9 +302,9 @@ attributes after creation to achieve exactly the same effect.</p>
 <li><strong>fqoi</strong> (<em>function</em>) &#8211; function that returns the quantity of interest, it
 must take two ordered arguments - the value of the design variable
 vector and the value of the uncertainty vector.</li>
-<li><strong>uncertain_parameters</strong> (<em>list</em>) &#8211; list of UncertainParameter objects
-that describe the uncertain inputs for the problem (they must have
-the getSample() method).</li>
+<li><strong>prob_uncertainties</strong> (<em>list</em>) &#8211; list of probabilistic uncertainties.
+Is a list of UncertainParameter objects, or a list of
+functions that return samples of the each uncertainty.</li>
 <li><strong>ftarget</strong> (<em>function</em>) &#8211; function that returns the value of the target
 PDF function.</li>
 <li><strong>jac</strong> (<em>bool/function</em>) &#8211; Argument that
@@ -349,9 +355,37 @@ is called [default True]</li>
 </tbody>
 </table>
 <dl class="method">
+<dt id="horsetailmatching.DensityMatching.evalMetric">
+<tt class="descname">evalMetric</tt><big>(</big><em>x</em>, <em>method=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.evalMetric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluates the density matching metric at a given design point.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>x</strong> (<em>iterable</em>) &#8211; values of the design variables, this is passed as
+the first argument to the function fqoi</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">metric_value - value of the metric evaluated at the design
+point given by x</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+<p><em>Example Usage</em>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">myFunc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">u</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">u1</span> <span class="o">=</span> <span class="n">UniformParameter</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">theDM</span> <span class="o">=</span> <span class="n">DensityMatching</span><span class="p">(</span><span class="n">myFunc</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x0</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">theDM</span><span class="o">.</span><span class="n">evalMetric</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
 <dt id="horsetailmatching.DensityMatching.evalMetricFromSamples">
 <tt class="descname">evalMetricFromSamples</tt><big>(</big><em>q_samples</em>, <em>grad_samples=None</em>, <em>method=None</em><big>)</big><a class="headerlink" href="#horsetailmatching.DensityMatching.evalMetricFromSamples" title="Permalink to this definition">¶</a></dt>
-<dd><p>Evaluates the horsetail matching metric from given samples of the quantity
+<dd><p>Evaluates the density matching metric from given samples of the quantity
 of interest and gradient instead of evaluating them at a design.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -663,23 +697,28 @@ surrogate is fitted</li>
 
 <dl class="method">
 <dt id="horsetailmatching.PolySurrogate.train">
-<tt class="descname">train</tt><big>(</big><em>fpoints</em><big>)</big><a class="headerlink" href="#horsetailmatching.PolySurrogate.train" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">train</tt><big>(</big><em>ftrain</em><big>)</big><a class="headerlink" href="#horsetailmatching.PolySurrogate.train" title="Permalink to this definition">¶</a></dt>
 <dd><p>Trains the polynomial expansion.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fpoints</strong> (<em>numpy.ndarray</em>) &#8211; output values corresponding to the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>ftrain</strong> (<em>numpy.ndarray/function</em>) &#8211; output values corresponding to the
 quadrature points given by the getQuadraturePoints method to
-which the expansion should be trained.</td>
+which the expansion should be trained. Or a function that should be evaluated
+at the quadrature points to give these output values.</td>
 </tr>
 </tbody>
 </table>
 <p><em>Sample Usage</em>:</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">thePC</span> <span class="o">=</span> <span class="n">PolySurrogate</span><span class="p">(</span><span class="n">dimensions</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">thePC</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">myFunc</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">predicted_q</span> <span class="o">=</span> <span class="n">thePC</span><span class="o">.</span><span class="n">predict</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">thePC</span> <span class="o">=</span> <span class="n">PolySurrogate</span><span class="p">(</span><span class="n">dimensions</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">U</span> <span class="o">=</span> <span class="n">thePC</span><span class="o">.</span><span class="n">getQuadraturePoints</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">Q</span> <span class="o">=</span> <span class="p">[</span><span class="n">myFunc</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="k">for</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">U</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">thePC</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">U</span><span class="p">,</span> <span class="n">Q</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">thePC</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">Q</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">predicted_q</span> <span class="o">=</span> <span class="n">thePC</span><span class="o">.</span><span class="n">predict</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 </pre></div>
 </div>

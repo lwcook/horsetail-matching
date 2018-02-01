@@ -5,6 +5,7 @@ This is a python package for horsetail matching, a method for optimization under
 *For detailed tutorials on using horsetail matching, please visit https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching*
 
 Documentation for the module is also available at https://www-edc.eng.cam.ac.uk/aerotools/horsetailmatching/documentation
+*Note that the API has changed slightly for v2, please read the tutorials and documentation*
 
 **Installation Instructions.**
 

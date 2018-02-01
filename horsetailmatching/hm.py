@@ -751,7 +751,15 @@ class HorsetailMatching(object):
 
             u_ints = np.zeros([self.samples_int, len(self.int_uncertainties)])
             for kk, uk in enumerate(self.int_uncertainties):
-                if isinstance(uk, (tuple, list)): ## See if given as tuple/list of bounds
+                if callable(uk):
+                    samps = np.array(uk()).flatten()
+                    if len(samps) != self.samples_prob:
+                        raise Exception('Number of samples returned not equal ' +
+                            'to specified number of samples: please set number of ' +
+                            'samples with samples_prob attribute')
+                    else:
+                        u_ints[:, kk] = samps
+                elif isinstance(uk, (tuple, list)): ## See if given as tuple/list of bounds
                     lb, ub = uk[0], uk[1]
                     u_ints[:, kk] = np.random.uniform(lb, ub, size=self.samples_int)
                     u_ints[0, kk] = lb
